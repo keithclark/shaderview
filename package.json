@@ -1,34 +1,18 @@
 {
-  "name": "shaderview",
+  "name": "@keithclark/shaderview",
   "version": "1.0.0",
   "description": "A Web Component for rendering GLSL shaders in HTML documents.",
-  "main": "index.js",
   "type": "module",
   "scripts": {
     "dev": "rollup -c -w",
+    "build": "rollup -c",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "module": "./dist/shaderview.min.js",
+  "main": "./dist/shaderview.min.js",
   "files": [
     "/dist"
   ],
-  "exports": {
-    ".": {
-      "browser": {
-        "production": {
-          "import": "./dist/shaderview.esm.min.js"
-        },
-        "development": {
-          "import": "./dist/shaderview.esm.js"
-        }
-      },
-      "node": {
-        "import": "./dist/shaderview.esm.min.js"
-      },
-      "default": {
-        "import": "./dist/shaderview.esm.min.js"
-      }
-    }
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/keithclark/shaderview.git"

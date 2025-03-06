@@ -1,6 +1,5 @@
 import ShaderRendererError from './ShaderRendererError.js';
 
-
 export default class ShaderRenderer {
 
   /** @type {WebGLRenderingContextBase} */
@@ -29,6 +28,7 @@ export default class ShaderRenderer {
     this.#program = this.#createProgram(fragmentShaderSource, vertexShaderSource);
     this.#uniformSetters = this.#createUniformSetters(this.#program);
   }
+
 
   /**
    * Creates a shader from the specified GLSL source.
@@ -157,14 +157,23 @@ export default class ShaderRenderer {
   }
 
 
+  /**
+   * Cleans up the renderer
+   */
   dispose() {
     const gl = this.#context;
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.deleteProgram(this.#program);
   }
 
-  setTime(t) {
-    this.#time = t;
+
+  /**
+   * Sets the internal time uniform value `uTime`
+   * 
+   * @param {number} value 
+   */
+  setTime(value) {
+    this.#time = value;
     this.#setUniformInternal('uTime', this.#time);
   }
 
@@ -174,7 +183,7 @@ export default class ShaderRenderer {
    * method, which adds additional error checking.
    * 
    * @param {string} name the name of the uniform to set
-   * @param {GLfloat|GLint} values the component values to set
+   * @param {GLfloat|GLint|GLboolean} values the component values to set
    */
   #setUniformInternal(name, ...values) {
     this.#uniformSetters.get(name)?.(...values);

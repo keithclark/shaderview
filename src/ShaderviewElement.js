@@ -162,7 +162,6 @@ export default class HTMLShaderviewElement extends HTMLElement {
     const vertexShaderElem = this.querySelector('script[type="x-shader/x-vertex"]');
  
     if (this.#fragmentShaderElement === fragmentShaderElem && this._vertexShaderElem === vertexShaderElem) {
-      console.log('nochange')
       return
     }
 
@@ -172,13 +171,11 @@ export default class HTMLShaderviewElement extends HTMLElement {
       // connection) then we abort it so that it doesn't resolve later and trash
       // any new shaders.
       if (this.#fragmentShaderElement) {
-        console.log('removing current fragment shader');
         this.#fragmentShaderAborter?.abort();
         this.#fragmentShader = null;
       }
 
       if (fragmentShaderElem) {
-        console.log('adding new fragment shader')
         this.#fragmentShaderAborter = new AbortController();
         this.#fragmentShader = this.#getScriptContents(fragmentShaderElem, this.#fragmentShaderAborter.signal);
       }
@@ -193,13 +190,11 @@ export default class HTMLShaderviewElement extends HTMLElement {
       // connection) then we abort it so that it doesn't resolve later and trash
       // any new shaders.
       if (this.#vertexShaderElement) {
-        console.log('removing current vertex shader')
         this.#vertexShaderAborter?.abort();
         this.#vertexShader = null;
       }
 
       if (vertexShaderElem) {
-        console.log('adding new vertex shader')
         this.#vertexShaderAborter = new AbortController();
         this.#vertexShader = this.#getScriptContents(vertexShaderElem, this.#vertexShaderAborter.signal);
       } else {
@@ -247,6 +242,9 @@ export default class HTMLShaderviewElement extends HTMLElement {
   }
 
 
+  /**
+   * @ignore
+   */
   connectedCallback() {
     this.#initShaderFromDom();
     this.#resizeObserver.observe(this);
@@ -254,6 +252,9 @@ export default class HTMLShaderviewElement extends HTMLElement {
   }
 
 
+  /**
+   * @ignore
+   */
   disconnectedCallback() {
     this.#resizeObserver.disconnect();
     this.#mutationObserver.disconnect();
