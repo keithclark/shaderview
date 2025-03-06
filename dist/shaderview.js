@@ -23,7 +23,6 @@ class ShaderRenderer {
 
   #width = 0;
   #height = 0;
-  #time = 0;
 
   /**
    * Creates a `ShaderRenderer` instance for a WebGL context using the provider 
@@ -183,8 +182,7 @@ class ShaderRenderer {
    * @param {number} value 
    */
   setTime(value) {
-    this.#time = value;
-    this.#setUniformInternal('uTime', this.#time);
+    this.#setUniformInternal('uTime', value);
   }
 
 
