@@ -10,6 +10,7 @@
   },
   "module": "./dist/shaderview.min.js",
   "main": "./dist/shaderview.min.js",
+  "types": "./dist/shaderview.d.ts",
   "files": [
     "/dist"
   ],
