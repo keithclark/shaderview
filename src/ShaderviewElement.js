@@ -303,7 +303,7 @@ export default class HTMLShaderviewElement extends HTMLElement {
 
 
   /**
-   * The current time in seconds.
+   * The current plackback time in seconds.
    * @type {number}
    */
   get time() {
@@ -329,6 +329,25 @@ export default class HTMLShaderviewElement extends HTMLElement {
     this.toggleAttribute('autoplay', !!value);
   }
 
+
+  /**
+   * Returns the `HTMLScriptElement` used as the fragment shader source or 
+   * `null` if no fragment shader is configured.
+   * @type {HTMLScriptElement|null} 
+   */
+  get fragmentShader() {
+    return this.#fragmentShaderElement;
+  }
+
+
+  /**
+   * Returns the `HTMLScriptElement` used as the vertex shader source or 
+   * `null` if no fragment shader is configured.
+   * @type {HTMLScriptElement|null} 
+   */
+  get vertexShader() {
+    return this.#vertexShaderElement;
+  }
 
   /**
    * Starts playback of the shader when it is ready. Returns a `Promise` that 

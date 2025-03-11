@@ -1,7 +1,7 @@
 // Automatically generated during build
 declare module "@keithclark/shaderview" {
   export default class HTMLShaderviewElement extends HTMLElement {
-    constructor()
+    constructor();
     /**
      * Starts playback of the shader when it is ready. Returns a `Promise` that
      * resolves when playback starts. Failure to begin playback for any reason
@@ -10,27 +10,37 @@ declare module "@keithclark/shaderview" {
      * Once playback begins, a `playing` event is dispatched. This event does
      * not bubble and cannot be cancelled.
      */
-    play(): Promise<void>
+    play(): Promise<void>;
     /**
      * Pauses playback of the shader.
      *
      * Once playback stops, a `pause` event is dispatched. This event does not
      * bubble and cannot be cancelled.
      */
-    pause(): void
+    pause(): void;
     /**
      * Returns a boolean that indicates whether the shader is paused.
      */
-    readonly paused: boolean
+    readonly paused: boolean;
     /**
-     * The current time in seconds.
+     * The current plackback time in seconds.
      */
-    time: number
+    time: number;
     /**
      * Reflects the `autoplay` HTML attribute, indicating whether playback
      * should begin automatically once the shader is ready.
      */
-    autoplay: boolean
+    autoplay: boolean;
+    /**
+     * Returns the `HTMLScriptElement` used as the fragment shader source or
+     * `null` if no fragment shader is configured.
+     */
+    readonly fragmentShader: HTMLScriptElement|null;
+    /**
+     * Returns the `HTMLScriptElement` used as the vertex shader source or
+     * `null` if no fragment shader is configured.
+     */
+    readonly vertexShader: HTMLScriptElement|null;
   }
   
 }
