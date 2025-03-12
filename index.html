@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shaderview by Keith Clark</title>
+<meta name="description" content="A Web Component for rendering WebGL shaders">
+<link rel="stylesheet" type="text/css" href="css.css">
+<link rel="stylesheet" type="text/css" href="prism-dark.css" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" type="text/css" href="prism-light.css" media="(prefers-color-scheme: light)">
+<link href="https://fonts.googleapis.com/css2?family=Nunito&display=swap" rel="stylesheet">
+<link rel="shortcut icon" type="image/x-icon" href="https://keithclark.co.uk/img/icon-32.png">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Shaderview by Keith Clark">
+<meta property="og:description" content="A Web Component for rendering WebGL shaders">
+<meta property="og:url" content="https://keithclark.github.io/shaderview/">
+<meta property="og:image" content="https://keithclark.co.uk/img/social-logo.png">
+<body>
+  <div class="kccouk kccouk--header bleed-left bleed-right">
+    &lt;shaderview&gt;
+    <div class="kccouk__social">
+      <a href="https://github.com/keithclark/shaderview" title="Find the project on GitHub"><svg viewBox="0 0 32.6 31.8"><path d="M16.3 0C7.3 0 0 7.3 0 16.3c0 7.2 4.7 13.3 11.1 15.5.8.1 1.1-.4 1.1-.8v-2.8c-4.5 1-5.5-2.2-5.5-2.2-.7-1.9-1.8-2.4-1.8-2.4-1.5-1 .1-1 .1-1 1.6.1 2.5 1.7 2.5 1.7 1.5 2.5 3.8 1.8 4.7 1.4.1-1.1.6-1.8 1-2.2-3.6-.4-7.4-1.8-7.4-8.1 0-1.8.6-3.2 1.7-4.4-.1-.3-.7-2 .2-4.2 0 0 1.4-.4 4.5 1.7 1.3-.4 2.7-.5 4.1-.5 1.4 0 2.8.2 4.1.5 3.1-2.1 4.5-1.7 4.5-1.7.9 2.2.3 3.9.2 4.3 1 1.1 1.7 2.6 1.7 4.4 0 6.3-3.8 7.6-7.4 8 .6.5 1.1 1.5 1.1 3V31c0 .4.3.9 1.1.8 6.5-2.2 11.1-8.3 11.1-15.5C32.6 7.3 25.3 0 16.3 0z"/></svg></a>
+    </div>
+  </div>
+
+  <main>
+    <div class="bleed-left bleed-right masthead">
+      <div class="shader">
+        <div class="shader__view">
+          <kc-shaderview autoplay>
+            <script type="x-shader/x-fragment" src="voxel-tunnel.glsl"></script>
+            <img loading="lazy" src="https://keithclark.co.uk/img/dejaview-app.jpg">
+          </kc-shaderview>
+        </div>
+        <div class="shader__info">
+          <div class="credit frosted">
+            <a class="credit__title" href="https://www.shadertoy.com/view/MscBRs">Voxel tunnel</a> by lsdlives
+            <div class="credit__license">License: <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/deed.en"><abbr title="Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License">CC BY-SA-NC</abbr></a></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="masthead__content bleed-left frosted">
+        <h1>&lt;shaderview&gt;</h1>
+        <span>A Web Component for rendering WebGL shaders</span>
+      </div>
+     
+    </div>
+
+    <div class="spaced">
+    <p>Shaderview is a Web Component for rendering WebGL shaders in HTML documents. 
+      Shaders are programs written in <a href="https://www.khronos.org/opengl/wiki/Core_Language_(GLSL)">OpenGL Shading Language</a> 
+      that are executed directly on the GPU. For examples of creations made using GLSL, take a look at <a href="https://www.shadertoy.com/results?query=&sort=popular&filter=">Shadertoy</a>.</p>
+    </div>
+
+    <h2>Using Shaderview in a build tool / bundler:</h2>
+    <p>If you're building on top of a framework or use build tooling such as Vite or Rollup, you can install the module as a dependency:</p>
+    <pre class="codeblock rounded"><code>npm install git+https://github.com/keithclark/shaderview</code></pre>
+    <p>You can now import the element from the module and define it in the component registry using your preferred tag name:</p>
+    <pre class="codeblock rounded"><code class="language-js">import ShaderviewElement from '@keithclark/shaderview';
+customElements.define('kc-shaderview', ShaderviewElement);</code></pre>
+
+    <h2>Using Shaderview directly in a browser:</h2>
+    <h3>Method 1: Use a local copy of the files:</h3>
+    <p>Download the <a href="https://github.com/keithclark/shaderview/blob/main/dist/shaderview.min.js">minified JavaScript module</a>, 
+      save it locally, import the element and register it:</p>
+    <pre class="codeblock rounded"><code class="language-html">&lt;script type="module">
+  import ShaderviewElement from './path/to/element.js';
+  customElements.define('kc-shaderview', ShaderviewElement);
+&lt;/script></code></pre>
+
+  <h3>Method 2: Load from a CDN:</h3>
+  <p>Import the component directly from a CDN and register it:</p>
+  <pre class="codeblock rounded"><code class="language-html">&lt;script type="module">
+  import ShaderviewElement from 'https://cdn.jsdelivr.net/gh/keithclark/shaderview/dist/shaderview.min.js';
+  customElements.define('kc-shaderview', ShaderviewElement);
+&lt;/script></code></pre>
+
+  <h2>Embedding a shader into a web page</h2>
+  <p>Adding a shader to your page is as simple as dropping in the new element and defining the shader source(s).</p>
+
+  <pre class="codeblock rounded"><code class="language-html">&lt;kc-shaderview&gt;
+  &lt;script type="x-shader/x-fragment"&gt;&lt;/script&gt;
+
+  &lt;!-- optional --&gt;
+  &lt;script type="x-shader/x-vertex"&gt;&lt;/script&gt;
+
+  &lt;!-- optional --&gt;
+  &lt;img src="fallback.web" alt="Fallback image description"&gt;                  
+&lt;/kc-shaderview&gt;</code></pre>
+
+<h3>Setting the shader source code</h3>
+<p>A shader source is embedded by adding child <code>&lt;script&gt;</code> elements to the shaderview. The <code>type</code> attribute 
+  determines which shader type is the script is defining. For a fragment shader, use
+  <code>x-shader/x-fragment</code> and for a vertex shader use 
+  <code>x-shader/x-vertex</code>. In the majority of cases you won't need to provide a vertex shader as shaderview will set a default for you.</p>
+
+  <p>Shader source code can be declared in one of two ways; externally referenced by URL, or inline. To load an external shader from a URL, set the <code>src</code> attribute of the relevant <code>&lt;script&gt;</code> element. (Note: CORS restrictions apply):</p> 
+
+  <figure class="pull-left pull-right-left pull-right">
+    <div class="example rounded">
+      <div class="example__preview">
+        <div class="shader">
+          <div class="shader__view">
+            <kc-shaderview autoplay>
+              <script type="x-shader/x-fragment" src="xyptonjtroz.glsl"></script>
+            </kc-shaderview>
+          </div>
+          <div class="shader__info">
+            <div class="credit frosted">
+              <a class="credit__title" href="https://www.shadertoy.com/view/4ts3z2">Xyptonjtroz</a> by nimitz
+              <div class="credit__license">License: <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/deed.en"><abbr title="Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License">CC BY-SA-NC</abbr></a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="example__code">
+        <pre class="codeblock"><code></code></pre>
+      </div>
+    </div> 
+    <figcaption>An example demonstrating how to load an external shader using the src attribute.</figcaption>
+  </figure>
+
+  <p>To embed the shader directly in your document simply 
+    omit the <code>src</code> attribute and supply the source code as text 
+    content:</p> 
+
+  <figure class="pull-left pull-right">
+    <div class="example rounded">
+      <div class="example__preview">
+        <div class="shader">
+          <div class="shader__view">
+            <kc-shaderview autoplay>
+              <script type="x-shader/x-fragment">
+                // Shader by kishimisu | CC BY-SA-NC
+                // https://www.shadertoy.com/view/mtyGWy
+                precision mediump float;
+                uniform float uTime;
+                uniform vec2 uResolution;
+                
+                // https://iquilezles.org/articles/palettes/
+                vec3 palette( float t ) {
+                  vec3 a = vec3(0.5, 0.5, 0.5);
+                  vec3 b = vec3(0.5, 0.5, 0.5);
+                  vec3 c = vec3(1.0, 1.0, 1.0);
+                  vec3 d = vec3(0.263,0.416,0.557);
+                  return a + b*cos( 6.28318*(c*t+d) );
+                }
+                
+                void main() {
+                  vec2 uv = (gl_FragCoord.xy * 2.0 - uResolution.xy) / uResolution.y;
+                  vec2 uv0 = uv;
+                  vec3 finalColor = vec3(0.0);
+                  for (float i = 0.0; i < 4.0; i++) {
+                    uv = fract(uv * 1.5) - 0.5;
+                    float d = length(uv) * exp(-length(uv0));
+                    vec3 col = palette(length(uv0) + i*.4 + uTime*.4);
+                    d = sin(d*8. + uTime)/8.;
+                    d = abs(d);
+                    d = pow(0.01 / d, 1.2);
+                    finalColor += col * d;
+                  }
+                  gl_FragColor = vec4(finalColor, 1.0);
+                }
+              </script>
+            </kc-shaderview>
+          </div>
+          <div class="shader__info">
+            <div class="credit frosted">
+              <a class="credit__title" href="https://www.shadertoy.com/view/mtyGWy">Shader Art Coding Introduction</a> by kishimisu
+              <div class="credit__license">License: <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/deed.en"><abbr title="Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License">CC BY-SA-NC</abbr></a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="example__code">
+        <pre class="codeblock"><code></code></pre>
+      </div>
+    </div> 
+    <figcaption>An example of a fragment shader declared inline.</figcaption>
+  </figure>
+
+  <h3>Autoplay</h3>
+  <p>The shaders in the previous examples are automatically playing because the 
+    boolean <code>autoplay</code> attribute is set on the <code>&lt;kc-shaderview&gt;</code> 
+    element. Autoplay starts playback as soon as the shader has finshed compiling and is ready to render. If you prefer to control playback with JavaScript, you can remove the <code>autoplay</code> attribute and use the <a href="#api">ShaderviewElement API</a> instead.</p>
+
+  <h3>Fallback Content</h3>
+  <p>Any child content not directly controlling shader input (i.e. <code>&lt;script type="x-shader/*"&gt;</code> elements) will be hidden once the shaderview component is defined and a WebGL context has been established. If either of these fail then the fallback content will be rendered instead. An &lt;img&gt; element showing a frame from the shader works well.</p>
+
+  <h2>Controlling Shaders using Uniforms</h2>
+  <p>Uniforms allow shaders to receive values from JavaScript through the WebGL API. Shaderview exposes two uniform values to the attached fragment and vertex shaders: 
+
+  <dl>
+    <dt id="api_event_playing"><h3><code>uResolution</code></h3></dt>
+    <dd>A vec2 containing the element dimensions. This value can be used to calculate the aspect ratio of your shader. Its value is not accessible via the <a href="#api">ShaderviewElement API</a>.</dd>
+    <dt id="api_event_playing"><h3><code>uTime</code></h3></dt>
+    <dd>A float containing the current playback time. This value can be set using <a href="#api">ShaderviewElement API</a>, via the <a href="#api_property_time">time</a> property. Changing this value will cause the next frame to render from the new time. If the shader is playing, this value will automatically increment every animation frame.</dd>
+  </dl>
+
+  <p>In the following example, the shader element is paused and a range input is used to set the <code>time</code> property — drag it to see the effect.</p>
+
+  <figure class="pull-left pull-right">
+    <div class="example rounded">
+      <div class="example__controls frosted">
+        <input id="range" type="range" step=".1" max="5" value="2.5">
+      </div>
+      <div class="example__preview">
+        <div class="shader">
+          <div class="shader__view">
+            <kc-shaderview id="shader">
+              <script type="x-shader/x-fragment" src="mandala.glsl"></script>
+            </kc-shaderview>
+
+            <script>
+              const shader = document.getElementById('shader');
+              const input = document.getElementById('range');
+              input.oninput = () => shader.time = input.valueAsNumber;
+            </script>
+          </div>
+          <div class="shader__info">
+            <div class="credit frosted">
+              <a class="credit__title" href="https://www.shadertoy.com/view/WdtGWf">Seigaiha Mandala</a> by Philippe Desgranges
+              <div class="credit__license">License: <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/deed.en"><abbr title="Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License">CC BY-SA-NC</abbr></a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="example__code">
+        <pre class="codeblock"><code></code></pre>
+      </div>
+    </div> 
+    <figcaption>An example showing how to set the uTime uniform value from JavaScript.</figcaption>
+  </figure>
+
+  <p>Using DOM events in this way allows your shaders to react to user actions. In the following header element the shader animation is linked to the document scroll position. A <code>scroll</code> event listener is used to set the shaders <code>time</code> property to the window <code>scrollY</code> value.</p>
+
+
+
+  
+  <div class="bleed-left bleed-right masthead" id="api">
+    <div class="shader">
+      <div class="shader__view">
+        <kc-shaderview  id="scrollTest">
+          <script type="x-shader/x-fragment" src="raymarch-basic.glsl"></script>
+        </kc-shaderview>
+      </div>
+      <div class="shader__info">
+        <div class="credit frosted">
+        <a class="credit__title" href="https://www.shadertoy.com/view/ltSSWD">Raymarching Basic</a> by gyabo
+        <div class="credit__license">License: <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/deed.en"><abbr title="Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License">CC BY-SA-NC</abbr></a></div>
+        </div>
+      </div>
+    </div>
+    <div class="masthead__content bleed-left frosted">
+      <h1>JavaScript API</h1>
+    </div>
+  </div>
+  <h2>Methods</h2>
+  <dl>
+    <dt id="api_method_play"><h3><code>play</code>()</h3></dt>
+    <dd><p>Starts playback of the shader once it is ready. Returns a <code>Promise</code> that 
+      resolves when playback starts. Failure to begin playback for any reason will
+      result in the promise being rejected.</p>
+    <p>Once playback begins, a <code>playing</code> event is dispatched. This event does not bubble and cannot be cancelled.</p>
+    </dd>
+    <dt id="api_method_pause"><h3><code>pause</code>()</h3></dt>
+    <dd>Pauses playback of the shader. Once playback stops, a <code>pause</code> event is 
+      dispatched. This event does not bubble and cannot be cancelled.</dd>
+  </dl>
+
+  <h2>Properties</h2>
+  <dl>
+    <dt id="api_property_autoplay"><h3><code>autoplay</code></h3></dt>
+    <dd>A boolean property that reflects the <code>autoplay</code> HTML attribute, indicating whether playback should 
+      begin automatically once the shader is ready.</dd>
+
+    <dt id="api_property_fragmentShader"><h3><code>fragmentShader</code></h3></dt>
+    <dd>Returns the <code>HTMLScriptElement</code> used as the fragment shader source or <code>null</code> if no shader is configured.</dd>
+  
+    <dt id="api_property_time"><h3><code>time</code></h3></dt>
+    <dd>Gets or sets the current playback time, in seconds.</dd>
+
+    <dt id="api_property_paused"><h3><code>paused</code></h3></dt>
+    <dd>Returns a boolean that indicates whether the shader is paused.</dd>
+
+    <dt id="api_property_vertexShader"><h3><code>vertexShader</code></h3></dt>
+    <dd>Returns the <code>HTMLScriptElement</code> used as the vertex shader source or <code>null</code> if no shader is configured.</dd>
+  </dl>
+
+  <h2>Events</h2>
+  <dl>
+    <dt id="api_event_error"><h3><code>error</code></h3></dt>
+    <dd>Triggered if one or more shaders cannot be loaded or if a shader could not
+      be compiled.</dd>
+
+    <dt id="api_event_load"><h3><code>load</code></h3></dt>
+    <dd>Triggered when the shader element has succesfully compiled the shader and 
+      is ready.</dd>
+
+    <dt id="api_event_playing"><h3><code>playing</code></h3></dt>
+    <dd>Triggered when playback starts. This event does not bubble and cannot be cancelled.</dd>
+
+    <dt id="api_event_pause"><h3><code>pause</code></h3></dt>
+    <dd>Triggered when playback pauses. This event does not bubble and cannot be cancelled.</dd>
+  </dl>
+</main>
+  
+<div class="kccouk kccouk--footer bleed-left bleed-right">
+  <span>A <a href="https://keithclark.co.uk">Keith Clark</a> project</span>
+  <div class="kccouk__social">
+    <a href="https://x.com/keithclarkcouk" title="Keith Clark on X"><svg viewBox="0 -100 1200 1327"><path d="M714 519 1161 0h-106L667 451 357 0H0l468 682L0 1226h106l409-476 328 476h357L714 519ZM569 688l-47-68L144 80h163l304 436 48 68 396 566H892L569 688Z"/></svg></a>
+    <a href="https://bsky.app/profile/keithclarkcouk.bsky.social" title="Keith Clark on BlueSky"><svg viewBox="0 -35 600 600"><path d="M136 44c66 50 138 151 164 205 26-54 98-155 164-205 48-36 126-64 126 25 0 18-10 149-16 170-21 74-96 93-163 81 117 20 147 86 82 153-122 125-176-32-189-72-3-8-4-11-4-8 0-3-1 0-4 8-13 40-67 197-189 72-65-67-35-133 82-153-67 12-142-7-163-81-6-21-16-152-16-170 0-89 78-61 126-25z"/></svg></a>
+    <a href="https://github.com/keithclark" title="Keith Clark on GitHub"><svg viewBox="0 0 32.6 31.8"><path d="M16.3 0C7.3 0 0 7.3 0 16.3c0 7.2 4.7 13.3 11.1 15.5.8.1 1.1-.4 1.1-.8v-2.8c-4.5 1-5.5-2.2-5.5-2.2-.7-1.9-1.8-2.4-1.8-2.4-1.5-1 .1-1 .1-1 1.6.1 2.5 1.7 2.5 1.7 1.5 2.5 3.8 1.8 4.7 1.4.1-1.1.6-1.8 1-2.2-3.6-.4-7.4-1.8-7.4-8.1 0-1.8.6-3.2 1.7-4.4-.1-.3-.7-2 .2-4.2 0 0 1.4-.4 4.5 1.7 1.3-.4 2.7-.5 4.1-.5 1.4 0 2.8.2 4.1.5 3.1-2.1 4.5-1.7 4.5-1.7.9 2.2.3 3.9.2 4.3 1 1.1 1.7 2.6 1.7 4.4 0 6.3-3.8 7.6-7.4 8 .6.5 1.1 1.5 1.1 3V31c0 .4.3.9 1.1.8 6.5-2.2 11.1-8.3 11.1-15.5C32.6 7.3 25.3 0 16.3 0z"/></svg></a>
+  </div>
+</div>
+
+  <script type="module">
+    import ShaderviewElement from './shaderview.min.js';
+    customElements.define('kc-shaderview', ShaderviewElement);
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+            entry.target.play();
+          } else {
+            entry.target.pause();
+          }
+      })
+    });
+
+    document.querySelectorAll('.example').forEach((elem) => {
+      const code = elem.querySelector('.example__code code');
+      const preview = elem.querySelector('.shader__view');
+      if (!preview) {
+        return;
+      }
+      if (code) {
+        code.classList = 'language-html';
+        code.textContent = preview.innerHTML.replace(/( autoplay)=""/g,'$1').replace(/\n            /g, '\n').trim();
+      }
+      const shaderView = elem.querySelector('kc-shaderview');
+      if (shaderView.autoplay) {
+        observer.observe(shaderView);
+      }
+    })
+
+    const shaderView = document.getElementById('scrollTest');
+    window.addEventListener('scroll', () => {
+      shaderView.time = window.scrollY / 400;
+    }, { passive: true });
+
+    shader.time = input.valueAsNumber;
+  </script>
+  <script src="prism.js"></script>
+</body>
+</html>

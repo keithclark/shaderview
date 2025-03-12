@@ -1,0 +1,396 @@
+/* =============================================================================
+BASE
+============================================================================= */
+
+:root {
+  --vspace: .75rem;
+  --width: 48rem;
+  --gutter: calc(var(--vspace) * 1.5);
+  --pull: 6em;
+  --color-primary: #c31337;
+  --color-base: #eff1f5;
+  --color-base-dark: #dddde4;
+  --color-base-contrast: #525050;
+  --color-base-contrast-high:#000;
+  --color-base-contrast-low: #6d6d6d;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #fe2653;
+    --color-base: #282c34;
+    --color-base-dark:#1d1e21;
+    --color-base-contrast: #c4c1cf;
+    --color-base-contrast-high:#fff;
+    --color-base-contrast-low: #a09999;
+  }
+}
+* {
+  margin:0;
+  padding:0;
+}
+html {
+  font:140% / 1.5 'Nunito',sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  line-height: calc(var(--vspace) * 2);
+  max-width: var(--width);
+  margin: auto;
+  background-color: var(--color-base);
+  color:var(--color-base-contrast);
+  padding-inline: var(--gutter);
+}
+
+
+
+code {
+  line-height: 1; /** var(--vspace) adds extra height for some reason **/
+}
+pre code {
+  line-height: inherit;
+}
+ul {
+  margin-left: 1rem;
+}
+li {
+  display: block;
+}
+li::before {
+  position: absolute;
+  margin-left: -1em;
+  content: '●';
+  color: var(--color-primary);
+}
+a {
+  color: var(--color-base-contrast-high);
+}
+
+h1 {
+  font-size:350%;
+  font-weight: normal;
+  line-height: calc(var(--vspace) * 5);
+  translate: 0 -.5rem;
+}
+h2 {
+  font-size:200%;
+  line-height: calc(var(--vspace) * 3);
+  /*translate: 0 calc(var(--vspace) * .25);*/
+  color: var(--color-primary);
+  font-weight: normal;
+  margin-block-start: calc(var(--vspace) * 4);
+}
+h3 {
+  font-size:125%;
+  line-height: calc(var(--vspace) * 2);
+  translate: 0 calc(var(--vspace) * -.14);
+  color: var(--color-base-contrast-high);
+}
+dd {
+  margin-left: 1.5rem;
+  margin-bottom: var(--vspace);
+}
+pre {
+  display: block;
+  width: 100%;
+  overflow: auto;
+}
+:is(h1,h2,ul,dl,p,pre) + :is(h1,h3,p,dl,pre,ul) {
+  margin-block-start: calc(var(--vspace) * 2);
+}
+figure {
+  display: block;
+  margin-block: calc(var(--gutter) * 2);
+}
+figcaption {
+  padding-block-start: var(--vspace);
+  color: var(--color-base-contrast-low);
+  text-align: center;
+  margin-inline: var(--vspace);
+}
+
+
+
+/* Utils
+----------------------------------------------------------------------------- */
+.rounded {
+  border-radius: 1em;
+}
+.frosted {
+  background: color-mix(in srgb, var(--color-base) 85%, #0000);
+  /*backdrop-filter: blur(6px);*/
+}
+
+.spaced {
+  margin-block: calc(var(--gutter) * 3);
+}
+
+.pull-left {
+  margin-left: max(calc(var(--pull) * -1), calc(50% - 50vw));
+}
+.pull-right {
+  margin-right: max(calc(var(--pull) * -1), calc(50% - 50vw));
+}
+
+
+.bleed-left {
+  margin-left: calc(50% - 50vw);
+  padding-left: max(var(--gutter), calc(50vw + (50% - var(--width)) )); 
+}
+.bleed-right {
+  margin-right: calc(50% - 50vw);
+  padding-right: max(var(--gutter), calc(50vw + (50% - var(--width)) )); 
+}
+
+
+/* =============================================================================
+END OF BASE
+============================================================================= */
+
+/* hide content until the web component has initialised */
+kc-shaderview {
+  background: #0013;
+}
+
+kc-shaderview:not(:defined) * {
+  display: none;
+}
+
+kc-shaderview img {
+  position: absolute;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+/* Shader layout
+----------------------------------------------------------------------------- */
+.shader {
+  display: grid;
+}
+.shader__view, .shader__info {
+  grid-area: 1 / 1;
+}
+.shader__view {
+  height: 100%;
+  z-index: -1;
+}
+.shader__info {
+  align-self: start;
+  justify-self: end;
+  margin-top: var(--vspace);
+ /*z-index: 1;*/
+}
+.shader kc-shaderview {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Examples layout
+----------------------------------------------------------------------------- */
+.example {
+  --max-height: calc(var(--vspace) * 24);
+  display: grid;
+  overflow: hidden;
+  grid-auto-columns: 1fr;
+}
+.example__preview {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 0;
+  height: var(--max-height);
+}
+.example__code {
+  grid-column: 2;
+  min-width: 0;
+  min-height: 0;
+  max-height: var(--max-height);
+}
+.example__controls {
+  grid-column: 1;
+  grid-row:1;
+  align-self: flex-end;
+  z-index: 0;
+  margin: var(--vspace);
+  padding: calc(var(--vspace) / 1.25) var(--vspace);
+  border-radius: 1em;
+  box-shadow: 0 2px 4px #0004;
+}
+.example .shader {
+  height: 100%;
+
+}
+.example input {
+  width: 100%;
+  margin: 0;
+  display: block;
+}
+.example--large {
+  --max-height: 24em;
+}
+
+/* Credit layout
+----------------------------------------------------------------------------- */
+.credit {
+  border-top-left-radius: 1em;
+  border-bottom-left-radius: 1em;
+  padding: .5em 1em .5em 1.5em;
+  color: var(--color-base-contrast-high);
+  line-height: 1.25;
+  font-size: 70%;
+  text-align: right;
+}
+.credit a {
+  color: inherit
+}
+
+.credit__license {
+  font-size: 90%;
+  color: var(--color-base-contrast-low);
+}
+
+
+
+
+
+
+.codeblock {
+  padding: var(--vspace);
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--color-base-dark);
+}
+
+/* masthead
+----------------------------------------------------------------------------- */
+.masthead {
+  position: relative;
+}
+.masthead__content {
+  padding-block: var(--gutter) var(--gutter);
+  padding-right: var(--gutter);
+  display: inline-block;
+  border-top-right-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+} 
+
+.masthead .shader {
+  position: absolute;
+  inset: 0;
+}
+.masthead {
+  padding-block: calc(var(--vspace) * 20) calc(var(--vspace) * 4);
+}
+
+.masthead:not(:first-child) {
+  margin-block-start:  calc(var(--gutter) * 3);
+}
+
+.masthead:not(:last-child) {
+  margin-block-end: var(--gutter);
+}
+
+.masthead__content h1 {
+  color: var(--color-base-contrast-high);
+  margin-bottom: calc(var(--vspace) * -1);
+}
+
+/* Responsive overrides
+----------------------------------------------------------------------------- */
+@media (max-width: 88em) {
+  :root {
+    --pull: 8em;
+  }
+  .example {
+    overflow: hidden;
+    border-radius: 0px;
+  }
+
+
+}
+
+
+@media (max-width: 60em) {
+  .example__code {
+    grid-row: 2;
+    grid-column: 1;
+  }
+  .codeblock {
+    padding-inline: var(--gutter);
+  }
+}
+
+
+@media (max-width: 44em) {
+  :root {
+    font-size: 100%;
+  }
+  .masthead h1 {
+    font-size: min(12vw, 300%);
+  }
+}
+
+
+/*
+.masthead__content {
+  display: none;
+}
+  */
+
+  /*
+
+h1 {
+  display: table;
+  margin-top: calc(var(--vspace) * -5);
+  background-color: var(--color-base);
+  padding: calc(var(--vspace) * .5) var(--vspace);
+  border-radius: .5rem;
+  color: var(--color-base-contrast-high);
+  margin-inline: calc(var(--vspace) * -1);
+}
+*/
+
+
+
+/*
+pre {
+  line-height: calc(var(--vspace));
+font-size: 77%;
+}
+*/
+
+
+.kccouk {
+  background: var(--color-base-dark);
+  padding-block: calc(var(--vspace) / 1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vspace);
+}
+
+.kccouk svg {
+  display: block;
+  height: calc(var(--vspace) * 1.5);
+  fill: var(--color-base-contrast-high);
+}
+
+.kccouk__social {
+  display: flex;
+  gap: var(--vspace);
+}
+
+
+.kccouk--header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.kccouk--footer {
+  margin-top: calc(var(--gutter) * 2);
+}
+
+.preamble {
+  font-size:125%;
+}
