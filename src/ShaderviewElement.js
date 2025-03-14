@@ -1,4 +1,4 @@
-import ShaderRenderer from './ShaderRenderer.js';
+const WORKER_FILENAME = 'shaderview-worker.js';
 
 const CSS = `
 @layer {:host { width: 400px; height: 300px; display: inline-block }}
@@ -8,15 +8,15 @@ canvas { position: absolute; inset:0 }
 
 const DEFAULT_VERTEX_SHADER_CODE = 'attribute vec3 position;void main(){gl_Position=vec4(position,1);}';
 
-const shaderSourceMap = new Map()
+const shaderSourceMap = new Map();
 
 /**
  * A Web Component for rendering GLSL shaders in HTML documents. 
  */
 export default class HTMLShaderviewElement extends HTMLElement {
 
-  /** @type {WebGLRenderingContextBase} */
-  #gl;
+  /** @type {Worker} */
+  #worker;
 
   /** @type {HTMLCanvasElement} */
   #canvas;
@@ -27,24 +27,17 @@ export default class HTMLShaderviewElement extends HTMLElement {
   /** @type {AbortController?} */
   #vertexShaderAborter
 
-  #fragmentShaderElement
+  /** @type {HTMLScriptElement?} */
+  #fragmentShaderElement;
 
-  #vertexShaderElement
+  /** @type {HTMLScriptElement?} */
+  #vertexShaderElement;
 
   /** @type {Promise<string>?} */
-  #fragmentShader
+  #fragmentShader;
 
-    /** @type {Promise<string>?} */
-  #vertexShader
-
-  /** @type {ShaderRenderer?} */
-  #renderer = null;
-
-  /** @type {number?} */
-  #updateRequestId = null;
-
-  /** @type {number?} */
-  #renderRequestId = null;
+  /** @type {Promise<string>?} */
+  #vertexShader;
 
   /** @type {Promise<void>?} */
   #ready = null;
@@ -53,29 +46,33 @@ export default class HTMLShaderviewElement extends HTMLElement {
 
   #lastFrameTimestamp = 0;
 
-  #dimensionsDirty = true;
-
   #paused = true;
+  #intersecting = false;
 
   #resizeObserver = new ResizeObserver(() => {
-    this.#dimensionsDirty = true;
-    this.#scheduleUpdate();
+    this.#postMessage('resize', {
+      width: this.clientWidth,
+      height: this.clientHeight
+    });
   });
 
   #mutationObserver = new MutationObserver(() => {
     this.#initShaderFromDom();
   });
 
-
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot.innerHTML = `<style>${CSS}</style><div><canvas></canvas><slot/></div>`
-    this.#canvas = this.shadowRoot.querySelector('canvas');
-    this.#gl = this.#canvas.getContext('webgl');
-    if (this.#gl) {
-      this.shadowRoot.querySelector('slot').hidden = true;
-    }
+    this.shadowRoot.innerHTML = `<style>${CSS}</style><div><canvas></canvas><slot/></div>`;
+    this.#canvas = this.shadowRoot.querySelector('canvas').transferControlToOffscreen();
+    this.#postMessage('setCanvas', this.#canvas, [this.#canvas]);
+    this.shadowRoot.querySelector('slot').hidden = true;
+    this.#worker = new Worker(`${import.meta.url}/../${WORKER_FILENAME}`);
+  }
+
+
+  #postMessage(cmd, data, transfer) {
+    this.#worker.postMessage({ cmd, data }, transfer);
   }
 
 
@@ -87,11 +84,7 @@ export default class HTMLShaderviewElement extends HTMLElement {
     if (!this.paused) {
       this.pause();
     }
-    if (!this.#renderer) {
-      return;
-    }
-    this.#renderer.dispose();
-    this.#renderer = null;
+    this.#postMessage('dispose');
   }
 
 
@@ -162,7 +155,7 @@ export default class HTMLShaderviewElement extends HTMLElement {
     const vertexShaderElem = this.querySelector('script[type="x-shader/x-vertex"]');
  
     if (this.#fragmentShaderElement === fragmentShaderElem && this._vertexShaderElem === vertexShaderElem) {
-      return
+      return;
     }
 
     // Are we replacing the fragment shader?
@@ -216,7 +209,10 @@ export default class HTMLShaderviewElement extends HTMLElement {
       this.#vertexShader
     ]).then(([fragmentSource, vertexSource]) => {
       this.#releaseRenderer();
-      this.#renderer = new ShaderRenderer(this.#gl, fragmentSource, vertexSource);
+      this.#postMessage('setSource', {
+        fragmentSource,
+        vertexSource
+      });
     });
    
   
@@ -229,8 +225,6 @@ export default class HTMLShaderviewElement extends HTMLElement {
       this.dispatchEvent(new Event('load'));
       if (this.hasAttribute('autoplay')) {
         this.play();
-      } else {
-        this.#scheduleUpdate();
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
@@ -261,38 +255,6 @@ export default class HTMLShaderviewElement extends HTMLElement {
   }
 
 
-  #scheduleUpdate() {
-    if (this.#renderRequestId !== null) {
-      return;
-    }
-    this.#renderRequestId = requestAnimationFrame(() => {
-      if (this.#renderer) {
-        this.#update();
-      }
-      this.#renderRequestId = null;
-    });
-  }
-
-
-  #update() {
-    // Resizing the canvas can add a performance overhead so we only do it if
-    // the resize observer has marked the dimensions as "dirty".
-    if (this.#dimensionsDirty) {
-      this.#canvas.width = this.clientWidth;
-      this.#canvas.height = this.clientHeight;
-      this.#dimensionsDirty = false;
-    }
-    this.#renderer.setTime(this.#lastFrameTimestamp);
-    this.#renderer.render();
-  }
-
-
-  #setCurrentTime(value) {
-    this.#lastFrameTimestamp = value;
-    this.#scheduleUpdate();
-  }
-
-
   /**
    * Returns a boolean that indicates whether the shader is paused.
    * @type {boolean}
@@ -312,7 +274,8 @@ export default class HTMLShaderviewElement extends HTMLElement {
 
   set time(value) {
     this.#startFrameTimestamp = (performance.now() / 1000) - value;
-    this.#setCurrentTime(value);
+    this.#lastFrameTimestamp = value;
+    this.#postMessage('setTime', value);
   }
 
 
@@ -372,16 +335,11 @@ export default class HTMLShaderviewElement extends HTMLElement {
     } catch (e) {
       throw new DOMException('DataError');
     }
-
-    this.#paused = false;
+  
     this.#startFrameTimestamp = (performance.now() / 1000) - this.#lastFrameTimestamp;
 
-    const tick = () => {
-      this.#setCurrentTime((performance.now() / 1000) - this.#startFrameTimestamp);
-      this.#updateRequestId = requestAnimationFrame(tick);
-    };
-
-    tick();
+    this.#postMessage('pause', false);
+    this.#paused = false;
     this.dispatchEvent(new Event('playing'));
   }
 
@@ -397,7 +355,7 @@ export default class HTMLShaderviewElement extends HTMLElement {
       return;
     }
     this.#paused = true;
-    cancelAnimationFrame(this.#updateRequestId);
+    this.#postMessage('pause', true);
     this.dispatchEvent(new Event('pause'));
   }
 

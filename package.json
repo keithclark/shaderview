@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/keithclark/shaderview#readme",
   "devDependencies": {
+    "@rollup/plugin-replace": "^6.0.2",
     "@rollup/plugin-terser": "^0.4.4"
   }
 }
