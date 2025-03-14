@@ -65,9 +65,9 @@ export default class HTMLShaderviewElement extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.shadowRoot.innerHTML = `<style>${CSS}</style><div><canvas></canvas><slot/></div>`;
     this.#canvas = this.shadowRoot.querySelector('canvas').transferControlToOffscreen();
+    this.#worker = new Worker(`${import.meta.url}/../${WORKER_FILENAME}`);
     this.#postMessage('setCanvas', this.#canvas, [this.#canvas]);
     this.shadowRoot.querySelector('slot').hidden = true;
-    this.#worker = new Worker(`${import.meta.url}/../${WORKER_FILENAME}`);
   }
 
 
