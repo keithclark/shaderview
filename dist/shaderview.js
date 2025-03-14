@@ -2,7 +2,7 @@ const WORKER_FILENAME = 'shaderview-worker.js';
 
 const CSS = `
 @layer {:host { width: 400px; height: 300px; display: inline-block }}
-div { position: relative; height: 100%; width:100%; user-select: none }
+div { position: relative; height: 100%; width:100%; user-select: none; overflow:hidden }
 canvas { position: absolute; inset:0 }
 `;
 
@@ -60,14 +60,42 @@ class HTMLShaderviewElement extends HTMLElement {
     this.#initShaderFromDom();
   });
 
+  #intersectionObserver = new IntersectionObserver((entries) => {
+    this.#intersecting = entries[0].isIntersecting;
+    const [ entry ] = entries;
+    const { target, isIntersecting } = entry;
+
+    if (isIntersecting) {
+      // Start monitoring the element for size changes. This will trigger a 
+      // `setSize` message to the worker.
+      this.#resizeObserver.observe(target);
+
+      // If the ShaderElement isn't paused then we need to restart the worker 
+      // and account for time difference.
+      if (!this.#paused) {
+        this.#postMessage('setTime', (performance.now() / 1000) - this.#startFrameTimestamp);
+        this.#postMessage('pause', false);
+      } else {
+        this.#postMessage('setTime', this.#lastFrameTimestamp);
+      }
+    } else {
+      // Stop monitoring for size changes and pause the worker if we're
+      // currently playing the shader.
+      this.#resizeObserver.unobserve(target);
+      if (!this.#paused) {
+        this.#postMessage('pause', true);
+      }
+    }
+  });
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
     this.shadowRoot.innerHTML = `<style>${CSS}</style><div><canvas></canvas><slot/></div>`;
     this.#canvas = this.shadowRoot.querySelector('canvas').transferControlToOffscreen();
+    this.#worker = new Worker(`${import.meta.url}/../${WORKER_FILENAME}`);
     this.#postMessage('setCanvas', this.#canvas, [this.#canvas]);
     this.shadowRoot.querySelector('slot').hidden = true;
-    this.#worker = new Worker(`${import.meta.url}/../${WORKER_FILENAME}`);
   }
 
 
@@ -241,8 +269,8 @@ class HTMLShaderviewElement extends HTMLElement {
    */
   connectedCallback() {
     this.#initShaderFromDom();
-    this.#resizeObserver.observe(this);
     this.#mutationObserver.observe(this, { childList: true });
+    this.#intersectionObserver.observe(this);
   }
 
 
@@ -252,6 +280,7 @@ class HTMLShaderviewElement extends HTMLElement {
   disconnectedCallback() {
     this.#resizeObserver.disconnect();
     this.#mutationObserver.disconnect();
+    this.#intersectionObserver.disconnect();
   }
 
 
@@ -275,7 +304,9 @@ class HTMLShaderviewElement extends HTMLElement {
   set time(value) {
     this.#startFrameTimestamp = (performance.now() / 1000) - value;
     this.#lastFrameTimestamp = value;
-    this.#postMessage('setTime', value);
+    if (this.#intersecting) {
+      this.#postMessage('setTime', value);
+    }
   }
 
 
