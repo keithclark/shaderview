@@ -1,4 +1,5 @@
 import ShaderRenderer from "./ShaderRenderer.js";
+import { sendExecuteError, sendExecuteSuccess } from "./worker-utils.js";
 
 /** @type {ShaderRenderer?} */
 let renderer;
@@ -20,17 +21,32 @@ let canvasHeight = 0;
 let startFrameTimestamp = 0;
 let lastFrameTimestamp = 0;
 
+/**
+ * 
+ * @param {MessageEvent} event 
+ * @returns 
+ */
 self.onmessage = (event) => {
   const { cmd, data } = event.data;
-
-  console.log('incoming:',{cmd,data})
+  const [ port ] = event.ports;
 
   if (cmd === 'setCanvas') {
     canvas = data;
-    glContext = canvas.getContext('webgl');
+    try {
+      glContext = canvas.getContext('webgl');
+      sendExecuteSuccess(port);
+    } catch (e) {
+      sendExecuteError(port, 'Unable to obtain a WebGL context');
+    }
   } else if (cmd === 'setSource') {
-    renderer = new ShaderRenderer(glContext, data.fragmentSource, data.vertexSource);
-    scheduleRender();
+    try {
+      renderer = new ShaderRenderer(glContext, data.fragmentSource, data.vertexSource);
+      sendExecuteSuccess(port);
+      scheduleRender();
+    } catch (e) {
+      renderer = null;
+      sendExecuteError(port, e.message, 'Unable to create renderer instance');
+    }
   } else if (cmd === 'resize') {
     canvasWidth = data.width;
     canvasHeight = data.height;

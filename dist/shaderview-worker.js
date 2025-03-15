@@ -30,6 +30,9 @@ class ShaderRenderer {
    * @param {string} vertexShaderSource The vetext shader code
    */
   constructor(glContext, fragmentShaderSource, vertexShaderSource) {
+    if ((!glContext instanceof WebGLRenderingContext)) {
+      throw new Error('Argument 1 must be a WebGLRenderingContext');
+    }
     this.#context = glContext;
     this.#program = this.#createProgram(fragmentShaderSource, vertexShaderSource);
     this.#uniformSetters = this.#createUniformSetters(this.#program);
@@ -208,6 +211,25 @@ class ShaderRenderer {
 
 }
 
+const WORKER_STATUS_SUCCESS = 'ok';
+const WORKER_STATUS_FAILURE = 'fail';
+
+
+/**
+ * @param {MessagePort} port
+ */
+const sendExecuteSuccess = (port) => {
+  port.postMessage({ status: WORKER_STATUS_SUCCESS });
+};
+
+
+/**
+ * @param {MessagePort} port
+ */
+const sendExecuteError = (port, reason) => {
+  port.postMessage({ status: WORKER_STATUS_FAILURE, reason });
+};
+
 /** @type {ShaderRenderer?} */
 let renderer;
 
@@ -228,17 +250,32 @@ let canvasHeight = 0;
 let startFrameTimestamp = 0;
 let lastFrameTimestamp = 0;
 
+/**
+ * 
+ * @param {MessageEvent} event 
+ * @returns 
+ */
 self.onmessage = (event) => {
   const { cmd, data } = event.data;
-
-  console.log('incoming:',{cmd,data});
+  const [ port ] = event.ports;
 
   if (cmd === 'setCanvas') {
     canvas = data;
-    glContext = canvas.getContext('webgl');
+    try {
+      glContext = canvas.getContext('webgl');
+      sendExecuteSuccess(port);
+    } catch (e) {
+      sendExecuteError(port, 'Unable to obtain a WebGL context');
+    }
   } else if (cmd === 'setSource') {
-    renderer = new ShaderRenderer(glContext, data.fragmentSource, data.vertexSource);
-    scheduleRender();
+    try {
+      renderer = new ShaderRenderer(glContext, data.fragmentSource, data.vertexSource);
+      sendExecuteSuccess(port);
+      scheduleRender();
+    } catch (e) {
+      renderer = null;
+      sendExecuteError(port, e.message);
+    }
   } else if (cmd === 'resize') {
     canvasWidth = data.width;
     canvasHeight = data.height;

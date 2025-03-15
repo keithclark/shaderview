@@ -20,6 +20,9 @@ export default class ShaderRenderer {
    * @param {string} vertexShaderSource The vetext shader code
    */
   constructor(glContext, fragmentShaderSource, vertexShaderSource) {
+    if ((!glContext instanceof WebGLRenderingContext)) {
+      throw new Error('Argument 1 must be a WebGLRenderingContext');
+    }
     this.#context = glContext;
     this.#program = this.#createProgram(fragmentShaderSource, vertexShaderSource);
     this.#uniformSetters = this.#createUniformSetters(this.#program);

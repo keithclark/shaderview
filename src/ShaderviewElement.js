@@ -1,3 +1,5 @@
+import { executeCommand, executeCommandAsync } from "./worker-utils.js";
+
 const WORKER_FILENAME = 'shaderview-worker.js';
 
 const CSS = `
@@ -42,6 +44,9 @@ export default class HTMLShaderviewElement extends HTMLElement {
   /** @type {Promise<void>?} */
   #ready = null;
 
+  /** @type {Promise<void>?} */
+  #canvasReady = null;
+
   #startFrameTimestamp = 0;
 
   #lastFrameTimestamp = 0;
@@ -50,7 +55,7 @@ export default class HTMLShaderviewElement extends HTMLElement {
   #intersecting = false;
 
   #resizeObserver = new ResizeObserver(() => {
-    this.#postMessage('resize', {
+    executeCommand(this.#worker, 'resize', {
       width: this.clientWidth,
       height: this.clientHeight
     });
@@ -73,17 +78,17 @@ export default class HTMLShaderviewElement extends HTMLElement {
       // If the ShaderElement isn't paused then we need to restart the worker 
       // and account for time difference.
       if (!this.#paused) {
-        this.#postMessage('setTime', (performance.now() / 1000) - this.#startFrameTimestamp);
-        this.#postMessage('pause', false);
+        executeCommand(this.#worker, 'setTime', (performance.now() / 1000) - this.#startFrameTimestamp);
+        executeCommand(this.#worker, 'pause', false);
       } else {
-        this.#postMessage('setTime', this.#lastFrameTimestamp);
+        executeCommand(this.#worker, 'setTime', this.#lastFrameTimestamp);
       }
     } else {
       // Stop monitoring for size changes and pause the worker if we're
       // currently playing the shader.
       this.#resizeObserver.unobserve(target);
       if (!this.#paused) {
-        this.#postMessage('pause', true);
+        executeCommand(this.#worker, 'pause', true);
       }
     }
   });
@@ -91,16 +96,16 @@ export default class HTMLShaderviewElement extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot.innerHTML = `<style>${CSS}</style><div><canvas></canvas><slot/></div>`;
-    this.#canvas = this.shadowRoot.querySelector('canvas').transferControlToOffscreen();
+    this.shadowRoot.innerHTML = `<style>${CSS}</style><div><canvas></canvas><slot hidden /></div>`;
     this.#worker = new Worker(`${import.meta.url}/../${WORKER_FILENAME}`);
-    this.#postMessage('setCanvas', this.#canvas, [this.#canvas]);
-    this.shadowRoot.querySelector('slot').hidden = true;
-  }
+    this.#canvas = this.shadowRoot.querySelector('canvas').transferControlToOffscreen();
+    this.#canvasReady = executeCommandAsync(this.#worker, 'setCanvas', this.#canvas, [this.#canvas]);
+    this.#canvasReady.catch((e) => {
+      this.shadowRoot.querySelector('slot').hidden = false;
+      // The component isn't going to work so fail silently and render the fallback
+      // content
+    });
 
-
-  #postMessage(cmd, data, transfer) {
-    this.#worker.postMessage({ cmd, data }, transfer);
   }
 
 
@@ -112,7 +117,10 @@ export default class HTMLShaderviewElement extends HTMLElement {
     if (!this.paused) {
       this.pause();
     }
-    this.#postMessage('dispose');
+    this.#intersecting = false;
+    this.#resizeObserver.disconnect();
+    this.#intersectionObserver.disconnect();
+    executeCommand(this.#worker, 'dispose');
   }
 
 
@@ -234,10 +242,11 @@ export default class HTMLShaderviewElement extends HTMLElement {
     // Ready is used elsewhere to determine if a renderer is available
     this.#ready = Promise.all([
       this.#fragmentShader,
-      this.#vertexShader
+      this.#vertexShader,
+      this.#canvasReady
     ]).then(([fragmentSource, vertexSource]) => {
       this.#releaseRenderer();
-      this.#postMessage('setSource', {
+      return executeCommandAsync(this.#worker, 'setSource', {
         fragmentSource,
         vertexSource
       });
@@ -250,11 +259,15 @@ export default class HTMLShaderviewElement extends HTMLElement {
     // the host application can act accordingly.
     try {
       await this.#ready;
+      this.#intersectionObserver.observe(this);
+      this.#resizeObserver.observe(this);
+
       this.dispatchEvent(new Event('load'));
       if (this.hasAttribute('autoplay')) {
         this.play();
       }
     } catch (e) {
+      console.log('ELEM ERROR', e)
       if (e.name !== 'AbortError') {
         this.#releaseRenderer();
         this.#ready = null;
@@ -270,7 +283,6 @@ export default class HTMLShaderviewElement extends HTMLElement {
   connectedCallback() {
     this.#initShaderFromDom();
     this.#mutationObserver.observe(this, { childList: true });
-    this.#intersectionObserver.observe(this);
   }
 
 
@@ -278,9 +290,8 @@ export default class HTMLShaderviewElement extends HTMLElement {
    * @ignore
    */
   disconnectedCallback() {
-    this.#resizeObserver.disconnect();
+    this.#releaseRenderer();
     this.#mutationObserver.disconnect();
-    this.#intersectionObserver.disconnect();
   }
 
 
@@ -305,7 +316,7 @@ export default class HTMLShaderviewElement extends HTMLElement {
     this.#startFrameTimestamp = (performance.now() / 1000) - value;
     this.#lastFrameTimestamp = value;
     if (this.#intersecting) {
-      this.#postMessage('setTime', value);
+      executeCommand(this.#worker, 'setTime', value);
     }
   }
 
@@ -369,7 +380,7 @@ export default class HTMLShaderviewElement extends HTMLElement {
   
     this.#startFrameTimestamp = (performance.now() / 1000) - this.#lastFrameTimestamp;
 
-    this.#postMessage('pause', false);
+    executeCommand(this.#worker, 'pause', false);
     this.#paused = false;
     this.dispatchEvent(new Event('playing'));
   }
@@ -386,7 +397,7 @@ export default class HTMLShaderviewElement extends HTMLElement {
       return;
     }
     this.#paused = true;
-    this.#postMessage('pause', true);
+    executeCommand(this.#worker, 'pause', true);
     this.dispatchEvent(new Event('pause'));
   }
 
