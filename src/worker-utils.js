@@ -50,3 +50,12 @@ export const sendExecuteSuccess = (port) => {
 export const sendExecuteError = (port, reason) => {
   port.postMessage({ status: WORKER_STATUS_FAILURE, reason });
 };
+
+
+/**
+ * @param {string} url URL of the worker, relative to the importing script.
+ * @returns {Worker}
+ */
+export const createWorker = (url) => {
+  return new Worker(new URL(url, import.meta.url));
+};

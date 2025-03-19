@@ -1,11 +1,17 @@
 import terser from '@rollup/plugin-terser';
-import replace from '@rollup/plugin-replace';
 import pkg from './package.json' assert { type: 'json'};
+import inlineWorker from './scripts/rollup-plugin-inline-worker/main.js';
 
 const production = !process.env.ROLLUP_WATCH;;
 const outputDir = 'dist';
 
-const bundles = [
+const bundles = [{
+  input: 'src/worker.js',
+    output: {
+      file: `${outputDir}/shaderview-worker.js`,
+      format: 'esm'
+    }
+  },
   {
     input: 'src/ShaderviewElement.js',
     output: {
@@ -13,29 +19,17 @@ const bundles = [
       format: 'esm',
       sourcemap: true
     }
-  },
-  {
-    input: 'src/worker.js',
-    output: {
-      file: `${outputDir}/shaderview-worker.js`,
-      format: 'esm'
-    }
   }
 ];
 
 if (production) {
   bundles.push({
-    input: 'src/ShaderviewElement.js',
+    input: 'src/worker.js',
     output: {
-      file: `${outputDir}/shaderview.min.js`,
+      file: `${outputDir}/shaderview-worker.min.js`,
       format: 'esm'
     },
     plugins: [
-      replace({
-        values: {
-          'shaderview-worker.js': 'shaderview-worker.min.js'
-        }
-      }),
       terser({
         format: {
           preamble: `/*! ${pkg.name} v${pkg.version} - ${pkg.author} - ${pkg.license} license */`
@@ -44,12 +38,15 @@ if (production) {
     ]
   },
   {
-    input: 'src/worker.js',
+    input: 'src/ShaderviewElement.js',
     output: {
-      file: `${outputDir}/shaderview-worker.min.js`,
-      format: 'esm'
+      file: `${outputDir}/shaderview.min.js`,
+      format: 'esm',
     },
     plugins: [
+      inlineWorker({
+        'shaderview-worker.js': `${outputDir}/shaderview-worker.min.js`
+      }),
       terser({
         format: {
           preamble: `/*! ${pkg.name} v${pkg.version} - ${pkg.author} - ${pkg.license} license */`

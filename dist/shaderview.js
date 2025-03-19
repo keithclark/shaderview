@@ -34,7 +34,14 @@ const executeCommandAsync = (worker, cmd, data, transfer = []) => {
   });
 };
 
-const WORKER_FILENAME = 'shaderview-worker.js';
+
+/**
+ * @param {string} url URL of the worker, relative to the importing script.
+ * @returns {Worker}
+ */
+const createWorker = (url) => {
+  return new Worker(new URL(url, import.meta.url));
+};
 
 const CSS = `
 @layer {:host { width: 400px; height: 300px; display: inline-block }}
@@ -131,7 +138,7 @@ class HTMLShaderviewElement extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     this.shadowRoot.innerHTML = `<style>${CSS}</style><div><canvas></canvas><slot hidden /></div>`;
-    this.#worker = new Worker(`${import.meta.url}/../${WORKER_FILENAME}`);
+    this.#worker = createWorker('shaderview-worker.js');
     this.#canvas = this.shadowRoot.querySelector('canvas').transferControlToOffscreen();
     this.#canvasReady = executeCommandAsync(this.#worker, 'setCanvas', this.#canvas, [this.#canvas]);
     this.#canvasReady.catch((e) => {
