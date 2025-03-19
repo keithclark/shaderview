@@ -102,12 +102,12 @@ customElements.define('kc-shaderview', ShaderviewElement);</code></pre>
         <div class="shader">
           <div class="shader__view">
             <kc-shaderview autoplay>
-              <script type="x-shader/x-fragment" src="xyptonjtroz.glsl"></script>
+              <script type="x-shader/x-fragment" src="cubed.glsl"></script>
             </kc-shaderview>
           </div>
           <div class="shader__info">
             <div class="credit frosted">
-              <a class="credit__title" href="https://www.shadertoy.com/view/4ts3z2">Xyptonjtroz</a> by nimitz
+              Cubed! by Keith Clark
               <div class="credit__license">License: <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/deed.en"><abbr title="Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License">CC BY-SA-NC</abbr></a></div>
             </div>
           </div>
@@ -241,14 +241,14 @@ customElements.define('kc-shaderview', ShaderviewElement);</code></pre>
     <div class="shader">
       <div class="shader__view">
         <kc-shaderview  id="scrollTest">
-          <script type="x-shader/x-fragment" src="raymarch-basic.glsl"></script>
-          <img loading="lazy" src="raymarch-basic.webp" alt="">
+          <script type="x-shader/x-fragment" src="cubed.glsl"></script>
+          <img loading="lazy" src="cubed.webp" alt="">
         </kc-shaderview>
       </div>
       <div class="shader__info">
         <div class="credit frosted">
-        <a class="credit__title" href="https://www.shadertoy.com/view/ltSSWD">Raymarching Basic</a> by gyabo
-        <div class="credit__license">License: <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/deed.en"><abbr title="Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License">CC BY-SA-NC</abbr></a></div>
+          Cubed! by Keith Clark
+          <div class="credit__license">License: <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/deed.en"><abbr title="Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License">CC BY-SA-NC</abbr></a></div>
         </div>
       </div>
     </div>
@@ -339,15 +339,11 @@ customElements.define('kc-shaderview', ShaderviewElement);</code></pre>
         code.classList = 'language-html';
         code.textContent = preview.innerHTML.replace(/( autoplay)=""/g,'$1').replace(/\n            /g, '\n').trim();
       }
-      const shaderView = elem.querySelector('kc-shaderview');
-      if (shaderView.autoplay) {
-        observer.observe(shaderView);
-      }
-    })
+    });
 
     const shaderView = document.getElementById('scrollTest');
     window.addEventListener('scroll', () => {
-      shaderView.time = window.scrollY / 400;
+      shaderView.time = -(shaderView.offsetTop - window.scrollY) / 280;
     }, { passive: true });
 
     shader.time = input.valueAsNumber;

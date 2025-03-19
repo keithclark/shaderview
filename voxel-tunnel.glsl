@@ -15,7 +15,7 @@
 
 // This is under CC-BY-NC-SA (shadertoy default licence)
 
-precision mediump float;
+precision highp float;
 uniform float uTime;
 uniform vec2 uResolution;
 
