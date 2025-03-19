@@ -267,7 +267,6 @@ export default class HTMLShaderviewElement extends HTMLElement {
         this.play();
       }
     } catch (e) {
-      console.log('ELEM ERROR', e)
       if (e.name !== 'AbortError') {
         this.#releaseRenderer();
         this.#ready = null;
@@ -305,11 +304,19 @@ export default class HTMLShaderviewElement extends HTMLElement {
 
 
   /**
-   * The current plackback time in seconds.
+   * The current plackback time in seconds. 
+   * 
+   * _Note: During playback, the frame render time is controlled by the worker.
+   * To avoid over using `postMessage` to sync the time value with this element 
+   * the worker value is approximated. This can result in a lack of precision._
+   * 
    * @type {number}
    */
   get time() {
-    return this.#lastFrameTimestamp;
+    if (this.#paused) {
+      return this.#lastFrameTimestamp;
+    }
+    return performance.now() / 1000 - this.#startFrameTimestamp;
   }
 
   set time(value) {
@@ -396,6 +403,7 @@ export default class HTMLShaderviewElement extends HTMLElement {
     if (this.#paused) {
       return;
     }
+    this.#lastFrameTimestamp = (performance.now() / 1000) - this.#startFrameTimestamp;
     this.#paused = true;
     executeCommand(this.#worker, 'pause', true);
     this.dispatchEvent(new Event('pause'));

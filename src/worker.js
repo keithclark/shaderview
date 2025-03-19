@@ -24,7 +24,6 @@ let lastFrameTimestamp = 0;
 /**
  * 
  * @param {MessageEvent} event 
- * @returns 
  */
 self.onmessage = (event) => {
   const { cmd, data } = event.data;
@@ -70,7 +69,7 @@ self.onmessage = (event) => {
     renderer.dispose();
     renderer = null;
   }
-}
+};
 
 
 /**
@@ -79,7 +78,7 @@ self.onmessage = (event) => {
 cancelRender = () => {
   cancelAnimationFrame(renderRequestId);
   renderRequestId = null;
-}
+};
 
 
 /**
@@ -90,16 +89,28 @@ scheduleRender = () => {
     return;
   }
   renderRequestId = requestAnimationFrame(() => {
-    if (renderer) {
-      if ((canvasWidth !== canvas.width || canvasHeight !== canvas.height)) {
-        canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
-      }
-      renderer.setTime(lastFrameTimestamp);
-      renderer.render();
-    }
-    renderRequestId = null;
+    renderRequestId = null; // need to clear this before calling render.
+    render();
   });
+};
+
+
+/**
+ * Renders a frame of the shader to the host canvas
+ */
+const render = () => {
+  // If we don't have a renderer or if there's already a render scheduled, don't
+  // do anything.
+  if (!renderer) {
+    return;
+  }
+  if ((canvasWidth !== canvas.width || canvasHeight !== canvas.height)) {
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+  }
+
+  renderer.setTime(lastFrameTimestamp);
+  renderer.render();
 };
 
 
@@ -112,10 +123,13 @@ const play = () => {
     return;
   }
   startFrameTimestamp = (performance.now() / 1000) - lastFrameTimestamp;
+
   const tick = () => {
-    tickRequestId = requestAnimationFrame(tick);
     lastFrameTimestamp = (performance.now() / 1000) - startFrameTimestamp;
+    // Shedule a render at the next animation frame
     scheduleRender();
+    // The next tick
+    tickRequestId = requestAnimationFrame(tick);
   };
   tick();
 };

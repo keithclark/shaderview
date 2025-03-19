@@ -24,6 +24,11 @@ declare module "@keithclark/shaderview" {
     readonly paused: boolean;
     /**
      * The current plackback time in seconds.
+     *
+     * _Note: During playback, the frame render time is controlled by the
+     * worker. To avoid over using `postMessage` to sync the time value with
+     * this element the worker value is approximated. This can result in a lack
+     * of precision._
      */
     time: number;
     /**
