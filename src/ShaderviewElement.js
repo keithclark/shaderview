@@ -1,22 +1,22 @@
-import ShaderRenderer from './ShaderRenderer.js';
+import { createWorker, executeCommand, executeCommandAsync } from "./worker-utils.js";
 
 const CSS = `
 @layer {:host { width: 400px; height: 300px; display: inline-block }}
-div { position: relative; height: 100%; width:100%; user-select: none }
+div { position: relative; height: 100%; width:100%; user-select: none; overflow:hidden }
 canvas { position: absolute; inset:0 }
 `;
 
 const DEFAULT_VERTEX_SHADER_CODE = 'attribute vec3 position;void main(){gl_Position=vec4(position,1);}';
 
-const shaderSourceMap = new Map()
+const shaderSourceMap = new Map();
 
 /**
  * A Web Component for rendering GLSL shaders in HTML documents. 
  */
 export default class HTMLShaderviewElement extends HTMLElement {
 
-  /** @type {WebGLRenderingContextBase} */
-  #gl;
+  /** @type {Worker} */
+  #worker;
 
   /** @type {HTMLCanvasElement} */
   #canvas;
@@ -27,55 +27,83 @@ export default class HTMLShaderviewElement extends HTMLElement {
   /** @type {AbortController?} */
   #vertexShaderAborter
 
-  #fragmentShaderElement
+  /** @type {HTMLScriptElement?} */
+  #fragmentShaderElement;
 
-  #vertexShaderElement
+  /** @type {HTMLScriptElement?} */
+  #vertexShaderElement;
 
   /** @type {Promise<string>?} */
-  #fragmentShader
+  #fragmentShader;
 
-    /** @type {Promise<string>?} */
-  #vertexShader
-
-  /** @type {ShaderRenderer?} */
-  #renderer = null;
-
-  /** @type {number?} */
-  #updateRequestId = null;
-
-  /** @type {number?} */
-  #renderRequestId = null;
+  /** @type {Promise<string>?} */
+  #vertexShader;
 
   /** @type {Promise<void>?} */
   #ready = null;
+
+  /** @type {Promise<void>?} */
+  #canvasReady = null;
 
   #startFrameTimestamp = 0;
 
   #lastFrameTimestamp = 0;
 
-  #dimensionsDirty = true;
-
   #paused = true;
+  #intersecting = false;
 
   #resizeObserver = new ResizeObserver(() => {
-    this.#dimensionsDirty = true;
-    this.#scheduleUpdate();
+    executeCommand(this.#worker, 'resize', {
+      width: this.clientWidth,
+      height: this.clientHeight
+    });
   });
 
   #mutationObserver = new MutationObserver(() => {
     this.#initShaderFromDom();
   });
 
+  #intersectionObserver = new IntersectionObserver((entries) => {
+    this.#intersecting = entries[0].isIntersecting;
+    const [ entry ] = entries;
+    const { target, isIntersecting } = entry;
+
+    if (isIntersecting) {
+      // Start monitoring the element for size changes. This will trigger a 
+      // `setSize` message to the worker.
+      this.#resizeObserver.observe(target);
+
+      // If the ShaderElement isn't paused then we need to restart the worker 
+      // and account for time difference.
+      if (!this.#paused) {
+        executeCommand(this.#worker, 'setTime', (performance.now() / 1000) - this.#startFrameTimestamp);
+        executeCommand(this.#worker, 'pause', false);
+      } else {
+        executeCommand(this.#worker, 'setTime', this.#lastFrameTimestamp);
+      }
+    } else {
+      // Stop monitoring for size changes and pause the worker if we're
+      // currently playing the shader.
+      this.#resizeObserver.unobserve(target);
+      if (!this.#paused) {
+        executeCommand(this.#worker, 'pause', true);
+      }
+    }
+  });
 
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot.innerHTML = `<style>${CSS}</style><div><canvas></canvas><slot/></div>`
-    this.#canvas = this.shadowRoot.querySelector('canvas');
-    this.#gl = this.#canvas.getContext('webgl');
-    if (this.#gl) {
-      this.shadowRoot.querySelector('slot').hidden = true;
-    }
+    this.shadowRoot.innerHTML = `<style>${CSS}</style><div><canvas></canvas><slot hidden /></div>`;
+    this.#worker = createWorker('shaderview-worker.js');
+    this.#canvas = this.shadowRoot.querySelector('canvas').transferControlToOffscreen();
+    this.#canvasReady = executeCommandAsync(this.#worker, 'setCanvas', this.#canvas, [this.#canvas]);
+    this.#canvasReady.catch((e) => {
+      this.shadowRoot.querySelector('slot').hidden = false;
+      // The component isn't going to work so fail silently and render the fallback
+      // content
+    });
+
   }
 
 
@@ -87,11 +115,10 @@ export default class HTMLShaderviewElement extends HTMLElement {
     if (!this.paused) {
       this.pause();
     }
-    if (!this.#renderer) {
-      return;
-    }
-    this.#renderer.dispose();
-    this.#renderer = null;
+    this.#intersecting = false;
+    this.#resizeObserver.disconnect();
+    this.#intersectionObserver.disconnect();
+    executeCommand(this.#worker, 'dispose');
   }
 
 
@@ -162,7 +189,7 @@ export default class HTMLShaderviewElement extends HTMLElement {
     const vertexShaderElem = this.querySelector('script[type="x-shader/x-vertex"]');
  
     if (this.#fragmentShaderElement === fragmentShaderElem && this._vertexShaderElem === vertexShaderElem) {
-      return
+      return;
     }
 
     // Are we replacing the fragment shader?
@@ -213,10 +240,14 @@ export default class HTMLShaderviewElement extends HTMLElement {
     // Ready is used elsewhere to determine if a renderer is available
     this.#ready = Promise.all([
       this.#fragmentShader,
-      this.#vertexShader
+      this.#vertexShader,
+      this.#canvasReady
     ]).then(([fragmentSource, vertexSource]) => {
       this.#releaseRenderer();
-      this.#renderer = new ShaderRenderer(this.#gl, fragmentSource, vertexSource);
+      return executeCommandAsync(this.#worker, 'setSource', {
+        fragmentSource,
+        vertexSource
+      });
     });
    
   
@@ -226,11 +257,12 @@ export default class HTMLShaderviewElement extends HTMLElement {
     // the host application can act accordingly.
     try {
       await this.#ready;
+      this.#intersectionObserver.observe(this);
+      this.#resizeObserver.observe(this);
+
       this.dispatchEvent(new Event('load'));
       if (this.hasAttribute('autoplay')) {
         this.play();
-      } else {
-        this.#scheduleUpdate();
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
@@ -247,7 +279,6 @@ export default class HTMLShaderviewElement extends HTMLElement {
    */
   connectedCallback() {
     this.#initShaderFromDom();
-    this.#resizeObserver.observe(this);
     this.#mutationObserver.observe(this, { childList: true });
   }
 
@@ -256,40 +287,8 @@ export default class HTMLShaderviewElement extends HTMLElement {
    * @ignore
    */
   disconnectedCallback() {
-    this.#resizeObserver.disconnect();
+    this.#releaseRenderer();
     this.#mutationObserver.disconnect();
-  }
-
-
-  #scheduleUpdate() {
-    if (this.#renderRequestId !== null) {
-      return;
-    }
-    this.#renderRequestId = requestAnimationFrame(() => {
-      if (this.#renderer) {
-        this.#update();
-      }
-      this.#renderRequestId = null;
-    });
-  }
-
-
-  #update() {
-    // Resizing the canvas can add a performance overhead so we only do it if
-    // the resize observer has marked the dimensions as "dirty".
-    if (this.#dimensionsDirty) {
-      this.#canvas.width = this.clientWidth;
-      this.#canvas.height = this.clientHeight;
-      this.#dimensionsDirty = false;
-    }
-    this.#renderer.setTime(this.#lastFrameTimestamp);
-    this.#renderer.render();
-  }
-
-
-  #setCurrentTime(value) {
-    this.#lastFrameTimestamp = value;
-    this.#scheduleUpdate();
   }
 
 
@@ -303,16 +302,27 @@ export default class HTMLShaderviewElement extends HTMLElement {
 
 
   /**
-   * The current plackback time in seconds.
+   * The current plackback time in seconds. 
+   * 
+   * _Note: During playback, the frame render time is controlled by the worker.
+   * To avoid over using `postMessage` to sync the time value with this element 
+   * the worker value is approximated. This can result in a lack of precision._
+   * 
    * @type {number}
    */
   get time() {
-    return this.#lastFrameTimestamp;
+    if (this.#paused) {
+      return this.#lastFrameTimestamp;
+    }
+    return performance.now() / 1000 - this.#startFrameTimestamp;
   }
 
   set time(value) {
     this.#startFrameTimestamp = (performance.now() / 1000) - value;
-    this.#setCurrentTime(value);
+    this.#lastFrameTimestamp = value;
+    if (this.#intersecting) {
+      executeCommand(this.#worker, 'setTime', value);
+    }
   }
 
 
@@ -372,16 +382,11 @@ export default class HTMLShaderviewElement extends HTMLElement {
     } catch (e) {
       throw new DOMException('DataError');
     }
-
-    this.#paused = false;
+  
     this.#startFrameTimestamp = (performance.now() / 1000) - this.#lastFrameTimestamp;
 
-    const tick = () => {
-      this.#setCurrentTime((performance.now() / 1000) - this.#startFrameTimestamp);
-      this.#updateRequestId = requestAnimationFrame(tick);
-    };
-
-    tick();
+    executeCommand(this.#worker, 'pause', false);
+    this.#paused = false;
     this.dispatchEvent(new Event('playing'));
   }
 
@@ -396,8 +401,9 @@ export default class HTMLShaderviewElement extends HTMLElement {
     if (this.#paused) {
       return;
     }
+    this.#lastFrameTimestamp = (performance.now() / 1000) - this.#startFrameTimestamp;
     this.#paused = true;
-    cancelAnimationFrame(this.#updateRequestId);
+    executeCommand(this.#worker, 'pause', true);
     this.dispatchEvent(new Event('pause'));
   }
 

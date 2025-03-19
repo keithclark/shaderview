@@ -1,226 +1,51 @@
-class ShaderRendererError extends Error {
-  /**
-   * 
-   * @param {string} message 
-   * @param {string} glErrorInfo 
-   */
-  constructor(message, glErrorInfo = '') {
-    super(message);
-    console.error(message + '\n  ' + glErrorInfo.replace(/\n/g, '\n  '));
-  }
-}
-
-class ShaderRenderer {
-
-  /** @type {WebGLRenderingContextBase} */
-  #context;
-
-  /** @type {WebGlProgram} */
-  #program;
-
-  /** @type {Map<string,(...values)=>void}>} */
-  #uniformSetters;
-
-  #width = 0;
-  #height = 0;
-
-  /**
-   * Creates a `ShaderRenderer` instance for a WebGL context using the provider 
-   * shader source.
-   * 
-   * @param {WebGLRenderingContextBase} glContext The WebGL context to render to
-   * @param {string} fragmentShaderSource The fragment shader code
-   * @param {string} vertexShaderSource The vetext shader code
-   */
-  constructor(glContext, fragmentShaderSource, vertexShaderSource) {
-    this.#context = glContext;
-    this.#program = this.#createProgram(fragmentShaderSource, vertexShaderSource);
-    this.#uniformSetters = this.#createUniformSetters(this.#program);
-  }
+const WORKER_STATUS_SUCCESS = 'ok';
 
 
-  /**
-   * Creates a shader from the specified GLSL source.
-   * 
-   * @param {string} source 
-   * @param {WebGLRenderingContextBase.VERTEX_SHADER|WebGLRenderingContextBase.FRAGMENT_SHADER_SHADER} type 
-   * @returns {WebGLShader}
-   */
-  #createShader(source, type) {
-    const gl = this.#context;
-    const shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      throw new ShaderRendererError(`Shader compilation failed (SHADER_TYPE=${type})`, gl.getShaderInfoLog(shader));
-    }
-    return shader;
-  }
+/**
+ * @param {Worker} worker The web worker instance responsible for process the command
+ * @param {string} cmd The command to execute
+ * @param {*} data The command payload
+ * @param {Transferable[]} transfer Objects to be transfered to the worker
+ */
+const executeCommand = (worker, cmd, data, transfer) => {
+  worker.postMessage({ cmd, data }, transfer);
+};
 
 
-  /**
-   * Creates a program for rendering the shader to a canvas.
-   * 
-   * @param {string} fragmentShaderSource 
-   * @returns {WebGLProgram}
-   */
-  #createProgram(fragmentShaderSource, vertexShaderSource) {
-    const gl = this.#context;
-
-    // Set the clear colour to transparent
-    gl.clearColor(1, 1, 1, 0);
-
-    // Try to compile the shaders
-    const vertexShader = this.#createShader(vertexShaderSource, gl.VERTEX_SHADER);
-    const fragmentShader = this.#createShader(fragmentShaderSource, gl.FRAGMENT_SHADER);
-
-    // Create the WebGL program using the compiled shaders and link it.
-    const program = gl.createProgram();
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-    gl.linkProgram(program);
-    
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      throw new ShaderRendererError('Program link failed', gl.getProgramInfoLog(program));
-    }
-  
-    gl.useProgram(program);
-  
-    // Create the vertex buffer and fill it with a quad
-    const vertexData = new Float32Array([1, 1, -1,  1, 1,  -1, -1, -1]);
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
-  
-    const attribute = gl.getAttribLocation(program, 'position');
-    gl.enableVertexAttribArray(attribute);
-    gl.vertexAttribPointer(attribute, 2, gl.FLOAT, false, 0, 0);
-
-    return program;
-  }
-
-
-  /** 
-   * Creates a Map containing a setter function for each uniforms declared by a 
-   * program. These functions are used by the `setUniform()` instance method.
-   * 
-   * @param {WebGLProgram} The program
-   * @returns {Map<string,(...values)=>void}>} 
-   */
-  #createUniformSetters = (program) => {
-    const result = new Map();
-    const gl = this.#context;
-
-    const uniformsCount = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
-    for (let c = 0; c < uniformsCount; c++) {
-      const { type, name } = gl.getActiveUniform(program, c);
-      const location = gl.getUniformLocation(program, name);
-      let setter;
-
-      if (type === gl.BOOL) {
-        setter = (value) => gl.uniform1i(location, !!value ? 1 : 0);
-      } else if (type === gl.FLOAT) {
-        setter = (value) => gl.uniform1f(location, value);
-      } else if (type === gl.FLOAT_VEC2) {
-        setter = (...values) => gl.uniform2f(location, ...values);
-      } else if (type === gl.FLOAT_VEC3) {
-        setter = (...values) => gl.uniform3f(location, ...values);
-      } else if (type === gl.FLOAT_VEC4) {
-        setter = (...values) => gl.uniform4f(location, ...values);
-      } else if (type === gl.INT) {
-        setter = (value) => gl.uniform1i(location, value);
-      } else if (type === gl.INT_VEC2) {
-        setter = (...values) => gl.uniform2i(location, ...values);
-      } else if (type === gl.INT_VEC3) {
-        setter = (...values) => gl.uniform3i(location, ...values);
-      } else if (type === gl.INT_VEC4) {
-        setter = (...values) => gl.uniform4i(location, ...values);
+/**
+ * @param {Worker} worker The web worker instance responsible for process the command
+ * @param {string} cmd The command to execute
+ * @param {*} data The command payload
+ * @param {Transferable[]} transfer Objects to be transfered to the worker
+ * @returns {Promise<*>}
+ */
+const executeCommandAsync = (worker, cmd, data, transfer = []) => {
+  return new Promise((resolve, reject) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = (event) => {
+      //console.log(cmd,'response', event.data)
+      if (event.data.status === WORKER_STATUS_SUCCESS) {
+        resolve();
       } else {
-        setter = () => {
-          console.warn(`Uniform "${name}" is an unsupported type ${type}.`);
-        };
+        reject(new DOMException(event.data.reason || 'Unhandled worker error'));
       }
-      result.set(name, setter);
-    }
-    return result;
-  }
-  
-  
-  /**
-   * Renders the shader to the canvas context.
-   */
-  render() {
-    const gl = this.#context;
-    const { canvas } = gl;
-    const { clientWidth, clientHeight } = canvas;
-
-    // If the canvas dimensions have changed since the last render we need to 
-    // update the viewport and let the shader code know the new resolution.
-    if (this.#width !== clientWidth || this.#height !== clientHeight) {
-      this.#width = clientWidth;
-      this.#height = clientHeight;
-      gl.viewport(0, 0, clientWidth, clientHeight);
-      this.#setUniformInternal('uResolution', clientWidth, clientHeight);
-    }
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-  }
+    };
+    executeCommand(worker, cmd, data, [channel.port2, ...transfer]);
+  });
+};
 
 
-  /**
-   * Cleans up the renderer
-   */
-  dispose() {
-    const gl = this.#context;
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.deleteProgram(this.#program);
-  }
-
-
-  /**
-   * Sets the internal time uniform value `uTime`
-   * 
-   * @param {number} value 
-   */
-  setTime(value) {
-    this.#setUniformInternal('uTime', value);
-  }
-
-
-  /**
-   * Sets a named uniform to a new value. Used by the public `setUniform`
-   * method, which adds additional error checking.
-   * 
-   * @param {string} name the name of the uniform to set
-   * @param {GLfloat|GLint|GLboolean} values the component values to set
-   */
-  #setUniformInternal(name, ...values) {
-    this.#uniformSetters.get(name)?.(...values);
-  }
-
-
-  /**
-   * Sets the named uniform to a new value. If the uniform doesn't exist a
-   * `ShaderRendererError` exception is thrown.
-   * 
-   * @param {string} name the name of the uniform to set
-   * @param {GLfloat|GLint|GLboolean} values the component values to set
-   * @throws {ShaderRendererError} if the uniform doesn't exist
-   */
-  setUniform(name, ...values) {
-    if (!this.#uniformSetters.has(name)) {
-      throw new ShaderRendererError(
-        'Error setting uniform',
-        `Uniform "${name}" does not exist.`
-      );
-    }
-    this.#setUniformInternal(name, ...values);
-  }
-
-}
+/**
+ * @param {string} url URL of the worker, relative to the importing script.
+ * @returns {Worker}
+ */
+const createWorker = (url) => {
+  return new Worker(new URL(url, import.meta.url));
+};
 
 const CSS = `
 @layer {:host { width: 400px; height: 300px; display: inline-block }}
-div { position: relative; height: 100%; width:100%; user-select: none }
+div { position: relative; height: 100%; width:100%; user-select: none; overflow:hidden }
 canvas { position: absolute; inset:0 }
 `;
 
@@ -233,8 +58,8 @@ const shaderSourceMap = new Map();
  */
 class HTMLShaderviewElement extends HTMLElement {
 
-  /** @type {WebGLRenderingContextBase} */
-  #gl;
+  /** @type {Worker} */
+  #worker;
 
   /** @type {HTMLCanvasElement} */
   #canvas;
@@ -245,55 +70,83 @@ class HTMLShaderviewElement extends HTMLElement {
   /** @type {AbortController?} */
   #vertexShaderAborter
 
-  #fragmentShaderElement
+  /** @type {HTMLScriptElement?} */
+  #fragmentShaderElement;
 
-  #vertexShaderElement
+  /** @type {HTMLScriptElement?} */
+  #vertexShaderElement;
 
   /** @type {Promise<string>?} */
-  #fragmentShader
+  #fragmentShader;
 
-    /** @type {Promise<string>?} */
-  #vertexShader
-
-  /** @type {ShaderRenderer?} */
-  #renderer = null;
-
-  /** @type {number?} */
-  #updateRequestId = null;
-
-  /** @type {number?} */
-  #renderRequestId = null;
+  /** @type {Promise<string>?} */
+  #vertexShader;
 
   /** @type {Promise<void>?} */
   #ready = null;
+
+  /** @type {Promise<void>?} */
+  #canvasReady = null;
 
   #startFrameTimestamp = 0;
 
   #lastFrameTimestamp = 0;
 
-  #dimensionsDirty = true;
-
   #paused = true;
+  #intersecting = false;
 
   #resizeObserver = new ResizeObserver(() => {
-    this.#dimensionsDirty = true;
-    this.#scheduleUpdate();
+    executeCommand(this.#worker, 'resize', {
+      width: this.clientWidth,
+      height: this.clientHeight
+    });
   });
 
   #mutationObserver = new MutationObserver(() => {
     this.#initShaderFromDom();
   });
 
+  #intersectionObserver = new IntersectionObserver((entries) => {
+    this.#intersecting = entries[0].isIntersecting;
+    const [ entry ] = entries;
+    const { target, isIntersecting } = entry;
+
+    if (isIntersecting) {
+      // Start monitoring the element for size changes. This will trigger a 
+      // `setSize` message to the worker.
+      this.#resizeObserver.observe(target);
+
+      // If the ShaderElement isn't paused then we need to restart the worker 
+      // and account for time difference.
+      if (!this.#paused) {
+        executeCommand(this.#worker, 'setTime', (performance.now() / 1000) - this.#startFrameTimestamp);
+        executeCommand(this.#worker, 'pause', false);
+      } else {
+        executeCommand(this.#worker, 'setTime', this.#lastFrameTimestamp);
+      }
+    } else {
+      // Stop monitoring for size changes and pause the worker if we're
+      // currently playing the shader.
+      this.#resizeObserver.unobserve(target);
+      if (!this.#paused) {
+        executeCommand(this.#worker, 'pause', true);
+      }
+    }
+  });
 
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot.innerHTML = `<style>${CSS}</style><div><canvas></canvas><slot/></div>`;
-    this.#canvas = this.shadowRoot.querySelector('canvas');
-    this.#gl = this.#canvas.getContext('webgl');
-    if (this.#gl) {
-      this.shadowRoot.querySelector('slot').hidden = true;
-    }
+    this.shadowRoot.innerHTML = `<style>${CSS}</style><div><canvas></canvas><slot hidden /></div>`;
+    this.#worker = createWorker('shaderview-worker.js');
+    this.#canvas = this.shadowRoot.querySelector('canvas').transferControlToOffscreen();
+    this.#canvasReady = executeCommandAsync(this.#worker, 'setCanvas', this.#canvas, [this.#canvas]);
+    this.#canvasReady.catch((e) => {
+      this.shadowRoot.querySelector('slot').hidden = false;
+      // The component isn't going to work so fail silently and render the fallback
+      // content
+    });
+
   }
 
 
@@ -305,11 +158,10 @@ class HTMLShaderviewElement extends HTMLElement {
     if (!this.paused) {
       this.pause();
     }
-    if (!this.#renderer) {
-      return;
-    }
-    this.#renderer.dispose();
-    this.#renderer = null;
+    this.#intersecting = false;
+    this.#resizeObserver.disconnect();
+    this.#intersectionObserver.disconnect();
+    executeCommand(this.#worker, 'dispose');
   }
 
 
@@ -380,7 +232,7 @@ class HTMLShaderviewElement extends HTMLElement {
     const vertexShaderElem = this.querySelector('script[type="x-shader/x-vertex"]');
  
     if (this.#fragmentShaderElement === fragmentShaderElem && this._vertexShaderElem === vertexShaderElem) {
-      return
+      return;
     }
 
     // Are we replacing the fragment shader?
@@ -431,10 +283,14 @@ class HTMLShaderviewElement extends HTMLElement {
     // Ready is used elsewhere to determine if a renderer is available
     this.#ready = Promise.all([
       this.#fragmentShader,
-      this.#vertexShader
+      this.#vertexShader,
+      this.#canvasReady
     ]).then(([fragmentSource, vertexSource]) => {
       this.#releaseRenderer();
-      this.#renderer = new ShaderRenderer(this.#gl, fragmentSource, vertexSource);
+      return executeCommandAsync(this.#worker, 'setSource', {
+        fragmentSource,
+        vertexSource
+      });
     });
    
   
@@ -444,11 +300,12 @@ class HTMLShaderviewElement extends HTMLElement {
     // the host application can act accordingly.
     try {
       await this.#ready;
+      this.#intersectionObserver.observe(this);
+      this.#resizeObserver.observe(this);
+
       this.dispatchEvent(new Event('load'));
       if (this.hasAttribute('autoplay')) {
         this.play();
-      } else {
-        this.#scheduleUpdate();
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
@@ -465,7 +322,6 @@ class HTMLShaderviewElement extends HTMLElement {
    */
   connectedCallback() {
     this.#initShaderFromDom();
-    this.#resizeObserver.observe(this);
     this.#mutationObserver.observe(this, { childList: true });
   }
 
@@ -474,40 +330,8 @@ class HTMLShaderviewElement extends HTMLElement {
    * @ignore
    */
   disconnectedCallback() {
-    this.#resizeObserver.disconnect();
+    this.#releaseRenderer();
     this.#mutationObserver.disconnect();
-  }
-
-
-  #scheduleUpdate() {
-    if (this.#renderRequestId !== null) {
-      return;
-    }
-    this.#renderRequestId = requestAnimationFrame(() => {
-      if (this.#renderer) {
-        this.#update();
-      }
-      this.#renderRequestId = null;
-    });
-  }
-
-
-  #update() {
-    // Resizing the canvas can add a performance overhead so we only do it if
-    // the resize observer has marked the dimensions as "dirty".
-    if (this.#dimensionsDirty) {
-      this.#canvas.width = this.clientWidth;
-      this.#canvas.height = this.clientHeight;
-      this.#dimensionsDirty = false;
-    }
-    this.#renderer.setTime(this.#lastFrameTimestamp);
-    this.#renderer.render();
-  }
-
-
-  #setCurrentTime(value) {
-    this.#lastFrameTimestamp = value;
-    this.#scheduleUpdate();
   }
 
 
@@ -521,16 +345,27 @@ class HTMLShaderviewElement extends HTMLElement {
 
 
   /**
-   * The current plackback time in seconds.
+   * The current plackback time in seconds. 
+   * 
+   * _Note: During playback, the frame render time is controlled by the worker.
+   * To avoid over using `postMessage` to sync the time value with this element 
+   * the worker value is approximated. This can result in a lack of precision._
+   * 
    * @type {number}
    */
   get time() {
-    return this.#lastFrameTimestamp;
+    if (this.#paused) {
+      return this.#lastFrameTimestamp;
+    }
+    return performance.now() / 1000 - this.#startFrameTimestamp;
   }
 
   set time(value) {
     this.#startFrameTimestamp = (performance.now() / 1000) - value;
-    this.#setCurrentTime(value);
+    this.#lastFrameTimestamp = value;
+    if (this.#intersecting) {
+      executeCommand(this.#worker, 'setTime', value);
+    }
   }
 
 
@@ -590,16 +425,11 @@ class HTMLShaderviewElement extends HTMLElement {
     } catch (e) {
       throw new DOMException('DataError');
     }
-
-    this.#paused = false;
+  
     this.#startFrameTimestamp = (performance.now() / 1000) - this.#lastFrameTimestamp;
 
-    const tick = () => {
-      this.#setCurrentTime((performance.now() / 1000) - this.#startFrameTimestamp);
-      this.#updateRequestId = requestAnimationFrame(tick);
-    };
-
-    tick();
+    executeCommand(this.#worker, 'pause', false);
+    this.#paused = false;
     this.dispatchEvent(new Event('playing'));
   }
 
@@ -614,11 +444,13 @@ class HTMLShaderviewElement extends HTMLElement {
     if (this.#paused) {
       return;
     }
+    this.#lastFrameTimestamp = (performance.now() / 1000) - this.#startFrameTimestamp;
     this.#paused = true;
-    cancelAnimationFrame(this.#updateRequestId);
+    executeCommand(this.#worker, 'pause', true);
     this.dispatchEvent(new Event('pause'));
   }
 
 }
 
 export { HTMLShaderviewElement as default };
+//# sourceMappingURL=shaderview.js.map
