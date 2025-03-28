@@ -1,3 +1,4 @@
+import { UNIFORM_NAME_RESOLUTION, UNIFORM_NAME_TIME } from "./consts.js";
 import { createWorker, executeCommand, executeCommandAsync } from "./worker-utils.js";
 
 const CSS = `
@@ -405,6 +406,20 @@ export default class HTMLShaderviewElement extends HTMLElement {
     this.#paused = true;
     executeCommand(this.#worker, 'pause', true);
     this.dispatchEvent(new Event('pause'));
+  }
+
+
+  /**
+   * Sets a named uniform in the shader program to a new value.
+   * 
+   * @param {string} name The name of the uniform to set
+   * @param {...number|boolean} values The new value(s) for the uniform
+   */
+  setUniform(name, ...values) {
+    if (name === UNIFORM_NAME_RESOLUTION || name === UNIFORM_NAME_TIME) {
+      throw new DOMException(`Uniform "${name}" cannot be set externally`);
+    }
+    executeCommand(this.#worker, 'setUniform', { name, values });
   }
 
 }

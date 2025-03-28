@@ -69,6 +69,15 @@ self.onmessage = (event) => {
     pause();
     renderer.dispose();
     renderer = null;
+  } else if (cmd === 'setUniform') {
+    if (!renderer) {
+      return;
+    }
+    renderer.setUniform(
+      data.name,
+      ...data.values
+    );
+    scheduleRender();
   }
 };
 
