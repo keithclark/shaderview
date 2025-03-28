@@ -11,6 +11,9 @@ export default class ShaderRenderer {
   /** @type {Map<string,(...values)=>void}>} */
   #uniformSetters;
 
+  /** @type {Map<string,any[]}>} */
+  #pendingUniformUpdates = new Map();
+
   /**
    * Creates a `ShaderRenderer` instance for a WebGL context using the provider 
    * shader source.
@@ -143,6 +146,15 @@ export default class ShaderRenderer {
     const gl = this.#context;
     const { canvas } = gl;
     const { width, height } = canvas;
+
+    // apply any uniform changes
+    for (const [name, values] of this.#pendingUniformUpdates.entries()) {
+      this.#uniformSetters.get(name)?.(...values);
+    }
+
+    // clear the uniform store ready for the next render
+    this.#pendingUniformUpdates.clear();
+    
     gl.viewport(0, 0, width, height);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
@@ -155,6 +167,7 @@ export default class ShaderRenderer {
     const gl = this.#context;
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.deleteProgram(this.#program);
+    this.#pendingUniformUpdates.clear();
   }
 
 
@@ -173,8 +186,12 @@ export default class ShaderRenderer {
         `Uniform "${name}" does not exist.`
       );
     }
-    
-    this.#uniformSetters.get(name)?.(...values);
+
+    // We don't apply the change immediately as calling `gl.uniform` multiple
+    // times between renders can cause performance issues in some browsers. 
+    // Instead, we keep track of the last assigned value and set the uniform
+    // value at render time.
+    this.#pendingUniformUpdates.set(name, values);
   }
 
 }
