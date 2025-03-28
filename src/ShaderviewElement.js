@@ -18,7 +18,7 @@ export default class HTMLShaderviewElement extends HTMLElement {
   /** @type {Worker} */
   #worker;
 
-  /** @type {HTMLCanvasElement} */
+  /** @type {OffscreenCanvas} */
   #canvas;
 
   /** @type {AbortController?} */
@@ -99,9 +99,9 @@ export default class HTMLShaderviewElement extends HTMLElement {
     this.#canvas = this.shadowRoot.querySelector('canvas').transferControlToOffscreen();
     this.#canvasReady = executeCommandAsync(this.#worker, 'setCanvas', this.#canvas, [this.#canvas]);
     this.#canvasReady.catch((e) => {
-      this.shadowRoot.querySelector('slot').hidden = false;
       // The component isn't going to work so fail silently and render the fallback
       // content
+      this.shadowRoot.querySelector('slot').hidden = false;
     });
 
   }

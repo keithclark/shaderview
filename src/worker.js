@@ -4,7 +4,7 @@ import { sendExecuteError, sendExecuteSuccess } from "./worker-utils.js";
 /** @type {ShaderRenderer?} */
 let renderer;
 
-/** @type {HTMLCanvasElement?} */
+/** @type {OffscreenCanvas?} */
 let canvas;
 
 /** @type {WebGLRenderingContextBase?} */
