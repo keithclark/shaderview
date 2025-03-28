@@ -1,5 +1,6 @@
 import ShaderRenderer from "./ShaderRenderer.js";
 import { sendExecuteError, sendExecuteSuccess } from "./worker-utils.js";
+import { UNIFORM_NAME_RESOLUTION, UNIFORM_NAME_TIME } from "./consts.js";
 
 /** @type {ShaderRenderer?} */
 let renderer;
@@ -107,9 +108,9 @@ const render = () => {
   if ((canvasWidth !== canvas.width || canvasHeight !== canvas.height)) {
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
+    renderer.setUniform(UNIFORM_NAME_RESOLUTION, canvasWidth, canvasHeight);
   }
-
-  renderer.setTime(lastFrameTimestamp);
+  renderer.setUniform(UNIFORM_NAME_TIME, lastFrameTimestamp);
   renderer.render();
 };
 

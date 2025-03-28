@@ -144,7 +144,6 @@ export default class ShaderRenderer {
     const { canvas } = gl;
     const { width, height } = canvas;
     gl.viewport(0, 0, width, height);
-    this.#setUniformInternal('uResolution', width, height);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
@@ -156,28 +155,6 @@ export default class ShaderRenderer {
     const gl = this.#context;
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.deleteProgram(this.#program);
-  }
-
-
-  /**
-   * Sets the internal time uniform value `uTime`
-   * 
-   * @param {number} value 
-   */
-  setTime(value) {
-    this.#setUniformInternal('uTime', value);
-  }
-
-
-  /**
-   * Sets a named uniform to a new value. Used by the public `setUniform`
-   * method, which adds additional error checking.
-   * 
-   * @param {string} name the name of the uniform to set
-   * @param {GLfloat|GLint|GLboolean} values the component values to set
-   */
-  #setUniformInternal(name, ...values) {
-    this.#uniformSetters.get(name)?.(...values);
   }
 
 
@@ -196,7 +173,8 @@ export default class ShaderRenderer {
         `Uniform "${name}" does not exist.`
       );
     }
-    this.#setUniformInternal(name, ...values);
+    
+    this.#uniformSetters.get(name)?.(...values);
   }
 
 }
