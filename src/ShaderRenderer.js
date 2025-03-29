@@ -172,19 +172,20 @@ export default class ShaderRenderer {
 
 
   /**
-   * Sets the named uniform to a new value. If the uniform doesn't exist a
-   * `ShaderRendererError` exception is thrown.
+   * Sets the named uniform to a new value, returning a boolean that indicates
+   * if the operation was successful or not.
+   * 
+   * _Note: Delcaring a uniform from inside a shader doesn't mean it is
+   * automatically available to the outside world. Uniforms are tree-shaken
+   * during the compilation process if they are unused._
    * 
    * @param {string} name the name of the uniform to set
    * @param {GLfloat|GLint|GLboolean} values the component values to set
-   * @throws {ShaderRendererError} if the uniform doesn't exist
+   * @returns {boolean} `true` if the uniform was set, or `false` if it the uniform doesn't exist.
    */
   setUniform(name, ...values) {
     if (!this.#uniformSetters.has(name)) {
-      throw new ShaderRendererError(
-        'Error setting uniform',
-        `Uniform "${name}" does not exist.`
-      );
+      return false;
     }
 
     // We don't apply the change immediately as calling `gl.uniform` multiple
@@ -192,6 +193,7 @@ export default class ShaderRenderer {
     // Instead, we keep track of the last assigned value and set the uniform
     // value at render time.
     this.#pendingUniformUpdates.set(name, values);
+    return true;
   }
 
 }

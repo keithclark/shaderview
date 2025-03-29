@@ -73,11 +73,15 @@ self.onmessage = (event) => {
     if (!renderer) {
       return;
     }
-    renderer.setUniform(
-      data.name,
-      ...data.values
-    );
-    scheduleRender();
+    const { name, values } = data;
+
+    if (renderer.setUniform(name, ...values)) {
+      scheduleRender();
+    } else if (name !== UNIFORM_NAME_RESOLUTION && name !== UNIFORM_NAME_TIME) {
+      // If the user is trying to set a uniform and it doesn't exist, report the
+      // error.
+      throw new ReferenceError(`Uniform "${name}" does not exist.`);
+    }
   }
 };
 
