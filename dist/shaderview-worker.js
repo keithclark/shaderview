@@ -21,6 +21,9 @@ class ShaderRenderer {
   /** @type {Map<string,(...values)=>void}>} */
   #uniformSetters;
 
+  /** @type {Map<string,any[]}>} */
+  #pendingUniformUpdates = new Map();
+
   /**
    * Creates a `ShaderRenderer` instance for a WebGL context using the provider 
    * shader source.
@@ -153,8 +156,16 @@ class ShaderRenderer {
     const gl = this.#context;
     const { canvas } = gl;
     const { width, height } = canvas;
+
+    // apply any uniform changes
+    for (const [name, values] of this.#pendingUniformUpdates.entries()) {
+      this.#uniformSetters.get(name)?.(...values);
+    }
+
+    // clear the uniform store ready for the next render
+    this.#pendingUniformUpdates.clear();
+    
     gl.viewport(0, 0, width, height);
-    this.#setUniformInternal('uResolution', width, height);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
@@ -166,47 +177,33 @@ class ShaderRenderer {
     const gl = this.#context;
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.deleteProgram(this.#program);
+    this.#pendingUniformUpdates.clear();
   }
 
 
   /**
-   * Sets the internal time uniform value `uTime`
+   * Sets the named uniform to a new value, returning a boolean that indicates
+   * if the operation was successful or not.
    * 
-   * @param {number} value 
-   */
-  setTime(value) {
-    this.#setUniformInternal('uTime', value);
-  }
-
-
-  /**
-   * Sets a named uniform to a new value. Used by the public `setUniform`
-   * method, which adds additional error checking.
+   * _Note: Delcaring a uniform from inside a shader doesn't mean it is
+   * automatically available to the outside world. Uniforms are tree-shaken
+   * during the compilation process if they are unused._
    * 
    * @param {string} name the name of the uniform to set
    * @param {GLfloat|GLint|GLboolean} values the component values to set
-   */
-  #setUniformInternal(name, ...values) {
-    this.#uniformSetters.get(name)?.(...values);
-  }
-
-
-  /**
-   * Sets the named uniform to a new value. If the uniform doesn't exist a
-   * `ShaderRendererError` exception is thrown.
-   * 
-   * @param {string} name the name of the uniform to set
-   * @param {GLfloat|GLint|GLboolean} values the component values to set
-   * @throws {ShaderRendererError} if the uniform doesn't exist
+   * @returns {boolean} `true` if the uniform was set, or `false` if it the uniform doesn't exist.
    */
   setUniform(name, ...values) {
     if (!this.#uniformSetters.has(name)) {
-      throw new ShaderRendererError(
-        'Error setting uniform',
-        `Uniform "${name}" does not exist.`
-      );
+      return false;
     }
-    this.#setUniformInternal(name, ...values);
+
+    // We don't apply the change immediately as calling `gl.uniform` multiple
+    // times between renders can cause performance issues in some browsers. 
+    // Instead, we keep track of the last assigned value and set the uniform
+    // value at render time.
+    this.#pendingUniformUpdates.set(name, values);
+    return true;
   }
 
 }
@@ -230,10 +227,20 @@ const sendExecuteError = (port, reason) => {
   port.postMessage({ status: WORKER_STATUS_FAILURE, reason });
 };
 
+/**
+ * The name of the uniform used to pass the current playback time to a shader
+ */
+const UNIFORM_NAME_TIME = 'uTime';
+
+/**
+ * The name of the uniform used to pass the element dimensions to a shader
+ */
+const UNIFORM_NAME_RESOLUTION = 'uResolution';
+
 /** @type {ShaderRenderer?} */
 let renderer;
 
-/** @type {HTMLCanvasElement?} */
+/** @type {OffscreenCanvas?} */
 let canvas;
 
 /** @type {WebGLRenderingContextBase?} */
@@ -297,6 +304,19 @@ self.onmessage = (event) => {
     pause();
     renderer.dispose();
     renderer = null;
+  } else if (cmd === 'setUniform') {
+    if (!renderer) {
+      return;
+    }
+    const { name, values } = data;
+
+    if (renderer.setUniform(name, ...values)) {
+      scheduleRender();
+    } else if (name !== UNIFORM_NAME_RESOLUTION && name !== UNIFORM_NAME_TIME) {
+      // If the user is trying to set a uniform and it doesn't exist, report the
+      // error.
+      throw new ReferenceError(`Uniform "${name}" does not exist.`);
+    }
   }
 };
 
@@ -336,9 +356,9 @@ const render = () => {
   if ((canvasWidth !== canvas.width || canvasHeight !== canvas.height)) {
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
+    renderer.setUniform(UNIFORM_NAME_RESOLUTION, canvasWidth, canvasHeight);
   }
-
-  renderer.setTime(lastFrameTimestamp);
+  renderer.setUniform(UNIFORM_NAME_TIME, lastFrameTimestamp);
   renderer.render();
 };
 
