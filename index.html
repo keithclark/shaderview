@@ -39,27 +39,27 @@ that are executed directly on the GPU. For examples of creations made using GLSL
 </div>
 <h2>Using Shaderview in a build tool / bundler:</h2>
 <p>If you're building on top of a framework or use build tooling such as Vite or Rollup, you can install the module as a dependency:</p>
-<pre class="codeblock"><code class="language-text">npm install git+https://github.com/keithclark/shaderview</code></pre>
+<pre class="codeblock rounded"><code class="language-text">npm install git+https://github.com/keithclark/shaderview</code></pre>
 <p>You can now import the element from the module and define it in the component registry using your preferred tag name:</p>
-<pre class="codeblock"><code class="language-js">import ShaderviewElement from &#039;@keithclark/shaderview&#039;;
+<pre class="codeblock rounded"><code class="language-js">import ShaderviewElement from &#039;@keithclark/shaderview&#039;;
 customElements.define(&#039;kc-shaderview&#039;, ShaderviewElement);</code></pre>
 <h2>Using Shaderview directly in a browser:</h2>
 <h3>Method 1: Use a local copy of the files:</h3>
 <p>Download the <a href="https://github.com/keithclark/shaderview/blob/main/dist/shaderview.min.js">minified JavaScript module</a>, 
 save it locally, import the element and register it:</p>
-<pre class="codeblock"><code class="language-html">&lt;script type=&quot;module&quot;&gt;
+<pre class="codeblock rounded"><code class="language-html">&lt;script type=&quot;module&quot;&gt;
   import ShaderviewElement from &#039;./path/to/element.js&#039;;
   customElements.define(&#039;kc-shaderview&#039;, ShaderviewElement);
 &lt;/script&gt;</code></pre>
 <h3>Method 2: Load from a CDN:</h3>
 <p>Import the component directly from a CDN and register it:</p>
-<pre class="codeblock"><code class="language-html">&lt;script type=&quot;module&quot;&gt;
-  import ShaderviewElement from &#039;https://cdn.jsdelivr.net/gh/keithclark/shaderview@1.1.1/dist/shaderview.min.js&#039;;
+<pre class="codeblock rounded"><code class="language-html">&lt;script type=&quot;module&quot;&gt;
+  import ShaderviewElement from &#039;https://cdn.jsdelivr.net/gh/keithclark/shaderview@1.2.0/dist/shaderview.min.js&#039;;
   customElements.define(&#039;kc-shaderview&#039;, ShaderviewElement);
 &lt;/script&gt;</code></pre>
 <h2>Embedding a shader into a web page</h2>
 <p>Adding a shader to your page is as simple as dropping in the new element and defining the shader source(s).</p>
-<pre class="codeblock"><code class="language-html">&lt;kc-shaderview&gt;
+<pre class="codeblock rounded"><code class="language-html">&lt;kc-shaderview&gt;
   &lt;script type=&quot;x-shader/x-fragment&quot;&gt;&lt;/script&gt;
 
   &lt;!-- optional --&gt;
@@ -147,7 +147,82 @@ element. Autoplay starts playback as soon as the shader has finshed compiling an
   const input = document.getElementById(&#039;range&#039;);
   input.oninput = () =&gt; shader.time = input.valueAsNumber;
 &lt;/script&gt;</code></pre></div></div> <figcaption>An example showing how to set the uTime uniform value from JavaScript</figcaption></figure>
-<p>Using DOM events in this way allows your shaders to react to user actions. In the following header element the shader animation is linked to the document scroll position. A <code>scroll</code> event listener is used to set the shaders <code>time</code> property to the window <code>scrollY</code> value.</p>
+<p>Besided the built-in uniforms, the <a href="#api">ShaderviewElement API</a> 
+exposes a <a href="#api_method_setUniform">setUniform</a> method for setting 
+other uniform values defined in the shader.</p>
+<p>In the following example, a uniform is used to pass the current pointer 
+position to the shader, which draws a smiley/emoji that tracks the pointer 
+around the viewport. 
+The <a href="https://www.shadertoy.com/view/lsXcWn">original version of the shader</a> animated between two facial expressions 
+but, for this example, the distance of the pointer from the shader is fed to the <code><a href="#api_property_time">time</a></code> property to control the facial animation.
+Notice how the expressiong changes from intrigue to excitement as the pointer gets closer?</p>
+<figure class="pull-left pull-right"> <div class="example rounded"><div class="example__preview"><div class="shader"><div class="shader__view"><kc-shaderview id="smiley">
+<script type="x-shader/x-fragment" src="smiley.glsl"></script>
+</kc-shaderview>
+<script>customElements.whenDefined('kc-shaderview').then(()=>{window.addEventListener('pointermove',(e)=>{const b=smiley.getBoundingClientRect();const x=e.clientX-b.left-b.width/2;const y=e.clientY-b.top-b.height/2;smiley.setUniform('uPosition',x,y);smiley.time=3-Math.sqrt(x*x+y*y)/300})});</script></div><div class="shader__info"><div class="credit frosted"><a href="https://www.shadertoy.com/view/lsXcWn">Smiley Tutorial</a> by BigWIngs<div class="credit__license">License: <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/deed.en"><abbr title="Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License">CC BY-SA-NC</abbr></a></div></div></div></div></div><div class="example__code"><pre class="codeblock"><code class="language-html">&lt;kc-shaderview id=&quot;smiley&quot;&gt;
+  &lt;script type=&quot;x-shader/x-fragment&quot; src=&quot;smiley.glsl&quot;&gt;&lt;/script&gt;
+&lt;/kc-shaderview&gt;
+
+&lt;script&gt;
+  customElements.whenDefined(&#039;kc-shaderview&#039;).then(() =&gt; {
+    window.addEventListener(&#039;pointermove&#039;, (e) =&gt; {
+      const b = smiley.getBoundingClientRect();
+
+      // Set the position uniform. The shader expects 
+      // uPosition to be a `vec2` type.
+      const x = e.clientX - b.left - b.width / 2;
+      const y = e.clientY - b.top - b.height / 2; 
+      smiley.setUniform(&#039;uPosition&#039;, x, y);
+
+      // Use pointer distance to change facial expression
+      smiley.time = 3 - Math.sqrt(x * x + y * y) / 300;
+    });
+  });
+&lt;/script&gt;</code></pre></div></div> <figcaption>An example of an excitable Smiley face following the pointer around the viewport.</figcaption></figure>
+<p>Below is a simpler example. This shader draws a crosshair at the coordinates 
+specified by the <code>uPosition</code> uniform. The fragment shader source 
+code has been inlined to demonstrate how the <code>uPosition</code> uniform is declared
+and how its value assigned from JavaScript. Here's how it works:</p>
+<ul>
+<li><code>uPosition</code> is declared in the fragment shader as a <code>vec2</code>, which has an <code>x</code> and <code>y</code> component.
+<li>A <code>pointermove</code> event handler is registered on the <code>&lt;kc-shaderview&gt;</code> element, allowing the pointer position to be tracked as it moves across the element.
+<li>In the event handler, the pointer <code>x</code> and <code>y</code> coordinates are localised so they are relative to the elements bounding box. Finally, <code>shaderview.setUniform('uPosition', x, y)</code> is called, which updates the <code>vec2</code> uniform with the new values and triggers a re-render.
+</ul>
+<figure class="pull-left pull-right"> <div class="example rounded"><div class="example__preview"><div class="shader"><div class="shader__view"><kc-shaderview id="crosshair">
+<script type="x-shader/x-fragment">precision highp float;uniform vec2 uPosition;void main(){vec3 color=vec3(.7,.2,1.);color*=1.25-min(
+abs(gl_FragCoord.x-uPosition.x),
+abs(gl_FragCoord.y-uPosition.y)
+)/12.;gl_FragColor=vec4(color,1.);}</script>
+</kc-shaderview>
+<script>customElements.whenDefined('kc-shaderview').then(()=>{crosshair.addEventListener('pointermove',(e)=>{const b=crosshair.getBoundingClientRect();const x=e.clientX-b.left;const y=b.bottom-e.clientY;crosshair.setUniform('uPosition',x,y)})});</script></div><div class="shader__info"></div></div></div><div class="example__code"><pre class="codeblock"><code class="language-html">&lt;kc-shaderview id=&quot;crosshair&quot;&gt;
+  &lt;script type=&quot;x-shader/x-fragment&quot;&gt;
+    precision highp float;
+    uniform vec2 uPosition;
+
+    void main() {
+      vec3 color = vec3(0.7, 0.2, 1.0);
+      color *= 1.25 - min(
+        abs(gl_FragCoord.x - uPosition.x),
+        abs(gl_FragCoord.y - uPosition.y)
+      ) / 12.0;
+      gl_FragColor = vec4(color, 1.0);
+    }
+  &lt;/script&gt;
+&lt;/kc-shaderview&gt;
+
+&lt;script&gt;
+  customElements.whenDefined(&#039;kc-shaderview&#039;).then(() =&gt; {
+    crosshair.addEventListener(&#039;pointermove&#039;, (e) =&gt; {
+      const b = crosshair.getBoundingClientRect();
+
+      // Set the position uniform 
+      // Note: Y-axis is inverted in GLSL
+      const x = e.clientX - b.left;
+      const y = b.bottom - e.clientY; 
+      crosshair.setUniform(&#039;uPosition&#039;, x, y);
+    });
+  });
+&lt;/script&gt;</code></pre></div></div> <figcaption>An example crosshairs shader that tracks the users pointer.</figcaption></figure>
 <div class="bleed-left bleed-right masthead" id="api">
 <div class="shader"><div class="shader__view"><kc-shaderview id="scrollTest">
 <script type="x-shader/x-fragment" src="cubed.glsl"></script>
@@ -159,28 +234,37 @@ element. Autoplay starts playback as soon as the shader has finshed compiling an
 </div>
 <h2>Methods</h2>
 <dl>
-<dt id="api_method_play"><h3><code>play</code>()</h3></dt>
-<dd><p>Starts playback of the shader once it is ready. Returns a <code>Promise</code> that 
+<dt id="api_method_pause"><h3><code>pause()</code></h3></dt>
+<dd>Pauses playback of the shader. Once playback stops, a <code>pause</code> event is 
+dispatched. This event does not bubble and cannot be cancelled.</dd>
+<dt id="api_method_play"><h3><code>play()</code></h3></dt>
+<dd>
+<p>Starts playback of the shader once it is ready. Returns a <code>Promise</code> that 
 resolves when playback starts. Failure to begin playback for any reason will
 result in the promise being rejected.</p>
 <p>Once playback begins, a <code>playing</code> event is dispatched. This event does not bubble and cannot be cancelled.</p>
+<pre class="codeblock rounded"><code class="language-js">await myShader.play();</code></pre>
 </dd>
-<dt id="api_method_pause"><h3><code>pause</code>()</h3></dt>
-<dd>Pauses playback of the shader. Once playback stops, a <code>pause</code> event is 
-dispatched. This event does not bubble and cannot be cancelled.</dd>
+<dt id="api_method_setUniform"><h3><code>setUniform(name, ...values)</code></h3></dt>
+<dd>
+<p>Sets a named uniform in the shader program to a new value.</p>
+<pre class="codeblock rounded"><code class="language-js">myShader.setUniform(&#039;myFloat&#039;, 1.5);           // set a float to 1.5
+myShader.setUniform(&#039;myVec2&#039;, 1, 2);           // set a vec2 to x=1, y=2
+myShader.setUniform(&#039;myVec3&#039;, 1, 2, 3);        // set a vec3 to x=1, y=2, z=3
+myShader.setUniform(&#039;myVec4&#039;, 1, 2, 3, 4);     // set a vec4 to x=1, y=2, z=3, w=4</code></pre> </dd>
 </dl>
 <h2>Properties</h2>
 <dl>
 <dt id="api_property_autoplay"><h3><code>autoplay</code></h3></dt>
 <dd>A boolean property that reflects the <code>autoplay</code> HTML attribute, indicating whether playback should 
 begin automatically once the shader is ready.</dd>
-<dt id="api_property_fragmentShader"><h3><code>fragmentShader</code></h3></dt>
+<dt id="api_property_fragmentShader"><h3><code>fragmentShader</code> <span class="badge">Read only</span></h3></dt>
 <dd>Returns the <code>HTMLScriptElement</code> used as the fragment shader source or <code>null</code> if no shader is configured.</dd>
+<dt id="api_property_paused"><h3><code>paused</code> <span class="badge">Read only</span></h3></dt>
+<dd>Returns a boolean that indicates whether the shader is paused.</dd>
 <dt id="api_property_time"><h3><code>time</code></h3></dt>
 <dd>Gets or sets the current playback time, in seconds.</dd>
-<dt id="api_property_paused"><h3><code>paused</code></h3></dt>
-<dd>Returns a boolean that indicates whether the shader is paused.</dd>
-<dt id="api_property_vertexShader"><h3><code>vertexShader</code></h3></dt>
+<dt id="api_property_vertexShader"><h3><code>vertexShader</code> <span class="badge">Read only</span></h3></dt>
 <dd>Returns the <code>HTMLScriptElement</code> used as the vertex shader source or <code>null</code> if no shader is configured.</dd>
 </dl>
 <h2>Events</h2>
@@ -191,10 +275,10 @@ be compiled.</dd>
 <dt id="api_event_load"><h3><code>load</code></h3></dt>
 <dd>Triggered when the shader element has succesfully compiled the shader and 
 is ready.</dd>
-<dt id="api_event_playing"><h3><code>playing</code></h3></dt>
-<dd>Triggered when playback starts. This event does not bubble and cannot be cancelled.</dd>
 <dt id="api_event_pause"><h3><code>pause</code></h3></dt>
 <dd>Triggered when playback pauses. This event does not bubble and cannot be cancelled.</dd>
+<dt id="api_event_playing"><h3><code>playing</code></h3></dt>
+<dd>Triggered when playback starts. This event does not bubble and cannot be cancelled.</dd>
 </dl>
 </main>
 <div class="kccouk kccouk--footer bleed-left bleed-right">
@@ -205,7 +289,7 @@ is ready.</dd>
 <a href="https://github.com/keithclark" title="Keith Clark on GitHub"><svg viewBox="0 0 32.6 31.8"><path d="M16.3 0C7.3 0 0 7.3 0 16.3c0 7.2 4.7 13.3 11.1 15.5.8.1 1.1-.4 1.1-.8v-2.8c-4.5 1-5.5-2.2-5.5-2.2-.7-1.9-1.8-2.4-1.8-2.4-1.5-1 .1-1 .1-1 1.6.1 2.5 1.7 2.5 1.7 1.5 2.5 3.8 1.8 4.7 1.4.1-1.1.6-1.8 1-2.2-3.6-.4-7.4-1.8-7.4-8.1 0-1.8.6-3.2 1.7-4.4-.1-.3-.7-2 .2-4.2 0 0 1.4-.4 4.5 1.7 1.3-.4 2.7-.5 4.1-.5 1.4 0 2.8.2 4.1.5 3.1-2.1 4.5-1.7 4.5-1.7.9 2.2.3 3.9.2 4.3 1 1.1 1.7 2.6 1.7 4.4 0 6.3-3.8 7.6-7.4 8 .6.5 1.1 1.5 1.1 3V31c0 .4.3.9 1.1.8 6.5-2.2 11.1-8.3 11.1-15.5C32.6 7.3 25.3 0 16.3 0z"/></svg></a>
 </div>
 </div>
-<script type="module">import ShaderviewElement from './shaderview.min.js';customElements.define('kc-shaderview',ShaderviewElement);const shaderView=document.getElementById('scrollTest');window.addEventListener('scroll',()=>{shaderView.time=-(shaderView.offsetTop-window.scrollY)/280;},{ passive:true });shader.time=input.valueAsNumber;</script>
+<script type="module">import ShaderviewElement from './shaderview.min.js';customElements.define('kc-shaderview',ShaderviewElement);customElements.whenDefined('kc-shaderview').then(()=>{const touchRepeater=(event)=>{event.target.dispatchEvent(new PointerEvent('pointermove',{clientX:e.touches[0].clientX,clientY:e.touches[0].clientY}))};const shaderView=document.getElementById('scrollTest');window.addEventListener('scroll',()=>{shaderView.time=-(shaderView.offsetTop-window.scrollY)/280},{passive:true});shaderView.time=-(shaderView.offsetTop-window.scrollY)/280;shader.time=input.valueAsNumber;window.addEventListener('touchmove',touchRepeater,{passive:true});crosshair.addEventListener('load',()=>{crosshair.setUniform('uPosition',crosshair.clientWidth/2,crosshair.clientHeight/2);crosshair.addEventListener('touchmove',touchRepeater,{passive:true})})});</script>
 <script src="prism.js" defer></script>
 </body>
 </html>
