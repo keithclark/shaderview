@@ -1,10 +1,11 @@
 import ShaderRenderer from "./ShaderRenderer.js";
 import { sendExecuteError, sendExecuteSuccess } from "./worker-utils.js";
+import { UNIFORM_NAME_RESOLUTION, UNIFORM_NAME_TIME } from "./consts.js";
 
 /** @type {ShaderRenderer?} */
 let renderer;
 
-/** @type {HTMLCanvasElement?} */
+/** @type {OffscreenCanvas?} */
 let canvas;
 
 /** @type {WebGLRenderingContextBase?} */
@@ -68,6 +69,19 @@ self.onmessage = (event) => {
     pause();
     renderer.dispose();
     renderer = null;
+  } else if (cmd === 'setUniform') {
+    if (!renderer) {
+      return;
+    }
+    const { name, values } = data;
+
+    if (renderer.setUniform(name, ...values)) {
+      scheduleRender();
+    } else if (name !== UNIFORM_NAME_RESOLUTION && name !== UNIFORM_NAME_TIME) {
+      // If the user is trying to set a uniform and it doesn't exist, report the
+      // error.
+      throw new ReferenceError(`Uniform "${name}" does not exist.`);
+    }
   }
 };
 
@@ -107,9 +121,9 @@ const render = () => {
   if ((canvasWidth !== canvas.width || canvasHeight !== canvas.height)) {
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
+    renderer.setUniform(UNIFORM_NAME_RESOLUTION, canvasWidth, canvasHeight);
   }
-
-  renderer.setTime(lastFrameTimestamp);
+  renderer.setUniform(UNIFORM_NAME_TIME, lastFrameTimestamp);
   renderer.render();
 };
 

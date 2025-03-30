@@ -19,6 +19,14 @@ declare module "@keithclark/shaderview" {
      */
     pause(): void;
     /**
+     * Sets a named uniform in the shader program to a new value.
+     *
+     * @param name The name of the uniform to set
+     *
+     * @param values The new value(s) for the uniform
+     */
+    setUniform(name: string, ...values: (number|boolean)[]): void;
+    /**
      * Returns a boolean that indicates whether the shader is paused.
      */
     readonly paused: boolean;
